@@ -1,7 +1,5 @@
 # audit-osh
 
-检查项目结构是否符合 OSH 架构。Audit and optimize a project's AI collaboration structure (CLAUDE.md, specs, skills, rules, agents) against the industrial-grade three-layer paradigm (OpenSpec + Superpowers + Harness).
-
 ---
 
 ## 概述
