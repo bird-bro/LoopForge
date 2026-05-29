@@ -1,6 +1,6 @@
 # audit-osh
 
-Audit and optimize a project's AI collaboration structure (CLAUDE.md, specs, skills, rules, agents) against the industrial-grade three-layer paradigm (OpenSpec + Superpowers + Harness).
+[中文文档](README-CN.md) | English
 
 ---
 
