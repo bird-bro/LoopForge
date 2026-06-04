@@ -38,7 +38,7 @@ Key principles: Spec as Code. TDD enforced (not a slogan). Skills on-demand. No 
 | O3 | Delta proposal templates | `openspec/changes/_template/` with proposal.md (Why/What/Scope/Success Criteria/Constraints/Risks) + spec.md (Data Model/API/Business Rules/Error Handling) |
 | O4 | Change archive | `openspec/archive/` for completed proposals |
 | O5 | Project overview | `openspec/project.md`: tech stack, module map, architecture — no coding conventions |
-| O6 | Boundary clear | Both `openspec/` and `specs/` have README.md explaining relationship |
+| O6 | Boundary clear | `openspec/README.md` explains structure: specs/ inside openspec/ for unified entry, changes/ for dynamic workflow, archive/ for history |
 | O7 | Language efficient | CLAUDE.md, specs/, openspec/ files use English |
 
 ### 1.2 Superpowers — "Enforce Discipline" (S1–S9)
@@ -107,16 +107,18 @@ Target: > 3x reduction. Single Agent context: < 150 lines (~3K tokens)
 ```
 project/
 ├── CLAUDE.md                     ← Nav hub: ≤120 lines
-├── openspec/                     ← SDD delta workflow
-│   ├── README.md
-│   ├── project.md                ← No coding conventions
-│   ├── changes/_template/        ← proposal.md + spec.md
-│   └── archive/
-├── specs/                        ← Shared truth
-│   ├── README.md
-│   ├── api-contract.md
-│   ├── data-model.md
-│   └── error-codes.md
+├── openspec/                     ← Unified spec management (specs inside for single entry)
+│   ├── README.md                 ← Structure explanation + responsibility separation
+│   ├── project.md                ← Business context, architecture (NO coding conventions)
+│   ├── specs/                    ← STATIC: Shared truth (inside openspec)
+│   │   ├── README.md             ← Explains role as shared truth
+│   │   ├── api-contract.md
+│   │   ├── data-model.md
+│   │   └── error-codes.md
+│   ├── changes/                  ← DYNAMIC: Active proposals
+│   │   ├── _template/            ← proposal.md + spec.md
+│   │   └── <active-change>/      ← In-progress work
+│   └── archive/                  ← COMPLETED: Finished proposals
 ├── .claude/
 │   ├── settings.json             ← Permissions + hooks + agents
 │   ├── rules/                    ← Auto-loaded (globs)
@@ -126,23 +128,42 @@ project/
 └── {mobile}/CLAUDE.md            ← Mobile Agent (if applicable)
 ```
 
+**Key improvement:**
+- `specs/` inside `openspec/` provides unified entry point
+- `openspec/README.md` clearly explains responsibility separation
+- Simpler mental model: "openspec/ has everything about specs"
+
 ---
 
 ## Phase 4: Optimization Playbook
 
 | Fix | Action | Closes | Key Files |
 |:--|:---|:---|:---|
-| 1 | Create `specs/` + api-contract.md, data-model.md, error-codes.md | O1,O2,O7 | See below |
-| 2 | Create `openspec/` + templates + project.md + READMEs | O3–O6 | See below |
-| 3 | Translate auto-loaded files to English | O7 | — |
-| 4 | Write Agent CLAUDE.md per tech stack | S1–S3,S9,H1–H3 | See below |
-| 5 | Add `.claude/rules/` with globs frontmatter | S4,S5 | See below |
-| 6 | Write `.claude/settings.json` | S6–S8 | See below |
-| 7 | Verify: re-run Phase 1, test hooks, test reviewer | All | — |
+| 1 | Create `openspec/` with `specs/` inside + templates + project.md + READMEs | O1–O7 | See below |
+| 2 | Translate auto-loaded files to English | O7 | — |
+| 3 | Write Agent CLAUDE.md per tech stack | S1–S3,S9,H1–H3 | See below |
+| 4 | Add `.claude/rules/` with globs frontmatter | S4,S5 | See below |
+| 5 | Write `.claude/settings.json` | S6–S8 | See below |
+| 6 | Verify: re-run Phase 1, test hooks, test reviewer | All | — |
 
-### Fix 1 & 2: Spec + OpenSpec Templates
+### Fix 1: OpenSpec Structure (specs inside openspec)
 
-**`specs/api-contract.md`**:
+**`openspec/README.md`** — Structure explanation + responsibility separation:
+- Explains: specs/ (static), changes/ (dynamic), archive/ (completed)
+- Clarifies: "openspec/ has everything about specs" — unified entry
+- Links to: project.md, specs/README.md, changes/_template/
+
+**`openspec/project.md`** — Business context (NO coding conventions):
+- Tech stack, module map, architecture
+- Success metrics, evolution plan
+- Constraints, risks
+
+**`openspec/specs/README.md`** — Shared truth explanation:
+- Authority: "All agents reference these files"
+- Change process: proposal → review → implementation → verification → archive
+- Language: English required (saves 30-50% tokens)
+
+**`openspec/specs/api-contract.md`**:
 ```markdown
 # API Contract
 > Single source of truth for frontend-backend integration.
@@ -168,9 +189,9 @@ Response data: `{ records: [], total: 100, size: 20, current: 1 }`
 ```
 > Fill per project. Status codes and pagination format are project conventions — adjust as needed.
 
-**`specs/data-model.md`**: Core entities, fields, constraints, relationships.
+**`openspec/specs/data-model.md`**: Core entities, fields, constraints, relationships.
 
-**`specs/error-codes.md`**: Unified error code table (enum, HTTP status, message, usage).
+**`openspec/specs/error-codes.md`**: Unified error code table (enum, HTTP status, message, usage).
 
 **`openspec/changes/_template/proposal.md`**:
 ```markdown
@@ -199,8 +220,8 @@ Technical / Performance / Security / Compatibility
 ```markdown
 # Spec: <feature>
 
-## 1. Data Model — new/modified entities (ref specs/data-model.md)
-## 2. API Contract — new endpoints (ref specs/api-contract.md)
+## 1. Data Model — new/modified entities (ref openspec/specs/data-model.md)
+## 2. API Contract — new endpoints (ref openspec/specs/api-contract.md)
 ## 3. Business Rules — condition → action, edge cases
 ## 4. Error Handling — scenario, error code, HTTP, user message
 ## 5. Frontend Pages (if applicable) — route, components, mocks
@@ -208,22 +229,20 @@ Technical / Performance / Security / Compatibility
 ## 7. Implementation Plan — backend, frontend, integration test, archive
 ```
 
-**`openspec/project.md`**: Business context, architecture table, module map, agent setup. NO coding conventions.
-
-### Fix 4: Agent CLAUDE.md Template
+### Fix 3: Agent CLAUDE.md Template
 
 ```markdown
 # CLAUDE.md — [Project] [Role]
 
 ## Role
 You are a **[Stack] [Role] Agent**. Scope: [responsibilities].
-**NEVER generate [opposite-domain] code**. **NEVER modify `../specs/`**.
+**NEVER generate [opposite-domain] code**. **NEVER modify `openspec/specs/`**.
 
 ## Project Overview
 System / Stack / Database / Config (4-6 lines)
 
 ## Before You Code
-1. Read specs: `../specs/`
+1. Read specs: `openspec/specs/`
 2. Mock first (frontend): MSW per API contract
 3. Never modify existing classes: use overloading (backend)
 
@@ -241,7 +260,7 @@ Pre-commit: [test command]
 
 > Slash commands are Claude Code native, NOT bash. Do not wrap in code blocks. If Superpowers not installed, apply same discipline manually.
 
-### Fix 5: Rules with Globs
+### Fix 4: Rules with Globs
 
 ```markdown
 ---
@@ -254,7 +273,7 @@ globs: backend/**
 - Exception codes: Axxxx/Bxxxx/Cxxxx
 ```
 
-### Fix 6: settings.json
+### Fix 5: settings.json
 
 ```json
 {
@@ -284,7 +303,7 @@ globs: backend/**
 ```
 > Adjust test commands and project name placeholders per project.
 
-### Fix 7: Verify and Iterate
+### Fix 6: Verify and Iterate
 
 After applying fixes, re-run Phase 1 audit. Also test:
 1. Start new session in each agent dir — confirm correct CLAUDE.md loads
@@ -299,13 +318,18 @@ After applying fixes, re-run Phase 1 audit. Also test:
 **Do not reorder:**
 
 ```
-1. CREATE specs/         ← Foundation
-2. CREATE openspec/      ← Delta workflow + templates
-3. CREATE .claude/       ← Rules + skills + settings.json
-4. CREATE agent CLAUDE.md  ← One per tech stack, inside its code dir
-5. REWRITE root CLAUDE.md  ← Nav hub only, after all pieces exist
-6. DELETE dead files     ← AGENTS.md, duplicates, orphaned docs/
-7. VERIFY no duplication ← Re-read every auto-loaded file
+1. CREATE openspec/         ← Unified entry (includes specs/ inside)
+   - openspec/README.md     ← Structure explanation + responsibility separation
+   - openspec/project.md    ← Business context
+   - openspec/specs/        ← Static contracts (inside openspec)
+     - README.md, api-contract.md, data-model.md, error-codes.md
+   - openspec/changes/_template/  ← proposal.md + spec.md
+   - openspec/archive/
+2. CREATE .claude/          ← Rules + skills + settings.json
+3. CREATE agent CLAUDE.md   ← One per tech stack, inside its code dir
+4. REWRITE root CLAUDE.md   ← Nav hub only, after all pieces exist
+5. DELETE dead files        ← AGENTS.md, duplicates, orphaned docs/
+6. VERIFY no duplication    ← Re-read every auto-loaded file
 ```
 
 ---
@@ -316,7 +340,7 @@ After applying fixes, re-run Phase 1 audit. Also test:
 |:---|:---|
 | Monolith CLAUDE.md (250+ lines, multi-stack) | Split into per-directory CLAUDE.md |
 | AGENTS.md exists | Delete it (Claude Code never reads it) |
-| Specs inline in CLAUDE.md | Extract to `specs/` |
+| Specs inline in CLAUDE.md | Extract to `openspec/specs/` |
 | CSS/SCSS in CLAUDE.md | Move to `.claude/skills/` |
 | Duplicate rules in CLAUDE.md + rules/ | Keep in rules/ only |
 | Style guides in docs/ for AI | Move to `.claude/skills/` for auto-trigger |
@@ -330,6 +354,7 @@ After applying fixes, re-run Phase 1 audit. Also test:
 | Root CLAUDE has agent rules | Root = nav hub; rules in sub-CLAUDE.md |
 | Modifying existing code | Overloading or new methods only |
 | Context window ignored | CLAUDE.md < 3K tokens; skills load on-demand |
+| specs/ at root level (standard OSH) | Move to `openspec/specs/` for unified entry |
 
 ---
 
@@ -349,9 +374,10 @@ After audit, produce:
 ## Quick Start: New Project Bootstrap
 
 ```bash
-mkdir -p project/{specs,openspec/{changes/_template,archive},.claude/{rules,skills}}
+mkdir -p project/openspec/{specs,changes/_template,archive}
+mkdir -p project/.claude/{rules,skills}
 mkdir -p project/backend project/frontend-web
-# Then write all files per Phase 4 templates above
+# Then write all files per Fix 1 templates above
 # Finally delete AGENTS.md, run Phase 1 audit to verify
 ```
 
@@ -361,7 +387,8 @@ mkdir -p project/backend project/frontend-web
 - [ ] Root CLAUDE.md ≤ 120 lines, nav hub only
 - [ ] Each sub-CLAUDE.md: Role + Overview + Before You Code + Standards + Superpowers + TDD + Build
 - [ ] Cross-domain prohibition explicit in every sub-CLAUDE.md
-- [ ] specs/api-contract.md authoritative for all agents
+- [ ] openspec/specs/api-contract.md authoritative for all agents
+- [ ] openspec/README.md explains structure + responsibility separation
 - [ ] openspec/changes/_template/ has proposal.md + spec.md
 - [ ] .claude/settings.json has permissions + hooks + agents
 - [ ] Reviewer tools = `["Read", "Bash"]` only
@@ -371,3 +398,4 @@ mkdir -p project/backend project/frontend-web
 - [ ] AGENTS.md deleted
 - [ ] Zero duplication across auto-loaded files
 - [ ] Each sub-CLAUDE.md < 3K tokens
+- [ ] specs/ inside openspec/ (unified entry point)
