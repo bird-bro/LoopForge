@@ -37,30 +37,31 @@
 - 上下文效率目标：> 3x 缩减，单代理上下文 < 150 行
 
 ### 3. 优化方案生成
-根据审计结果，生成 7 步优化方案：
-1. 创建 `specs/` + API 契约、数据模型、错误码文档
-2. 创建 `openspec/` + 模板 + project.md + README
-3. 将自动加载文件翻译为英文
-4. 按技术栈编写 Agent CLAUDE.md
-5. 添加 `.claude/rules/` 规则（带 globs 前置元数据）
-6. 编写 `.claude/settings.json`
-7. 验证：重新运行审计、测试钩子、测试审查器
+根据审计结果，生成 6 步优化方案：
+1. 创建 `openspec/`（包含 `specs/` 在内部）+ 模板 + project.md + READMEs
+2. 将自动加载文件翻译为英文
+3. 按技术栈编写 Agent CLAUDE.md
+4. 添加 `.claude/rules/` 规则（带 globs 前置元数据）
+5. 编写 `.claude/settings.json`
+6. 验证：重新运行审计、测试钩子、测试审查器
 
 ### 4. 目标结构模板
 提供完整的 Monorepo 目标结构：
 ```
 project/
 ├── CLAUDE.md                     # 导航中心：≤120 行
-├── openspec/                     # SDD 增量工作流
-│   ├── README.md
-│   ├── project.md
-│   ├── changes/_template/        # proposal.md + spec.md
-│   └── archive/
-├── specs/                        # 共享真相
-│   ├── README.md
-│   ├── api-contract.md
-│   ├── data-model.md
-│   └── error-codes.md
+├── openspec/                     # 统一规范管理（specs 在内部，统一入口）
+│   ├── README.md                 # 结构说明 + 职责分离
+│   ├── project.md                # 业务背景、架构（无编码规范）
+│   ├── specs/                    # 静态契约（在 openspec 内部）
+│   │   ├── README.md             # 共享真相说明
+│   │   ├── api-contract.md
+│   │   ├── data-model.md
+│   │   └── error-codes.md
+│   ├── changes/                  # 动态变更
+│   │   ├── _template/            # proposal.md + spec.md
+│   │   └── <active-change>/      # 进行中的工作
+│   └── archive/                  # 已完成的变更
 ├── .claude/
 │   ├── settings.json             # 权限 + 钩子 + 代理
 │   ├── rules/                    # 自动加载（globs）
@@ -70,15 +71,21 @@ project/
 └── {mobile}/CLAUDE.md            # 移动端代理
 ```
 
+**关键改进：**
+- `specs/` 在 `openspec/` 内部，提供统一入口
+- `openspec/README.md` 清晰说明职责分离
+- 更简单的心理模型："openspec/ 包含所有规范相关内容"
+
 ### 5. 反模式快速参考
 识别并修复常见反模式：
 - 单体 CLAUDE.md（250+ 行，多技术栈）→ 拆分为按目录的 CLAUDE.md
 - AGENTS.md 存在 → 删除
-- 规范内联在 CLAUDE.md 中 → 提取到 `specs/`
+- 规范内联在 CLAUDE.md 中 → 提取到 `openspec/specs/`
 - 重复规则 → 仅保留在 rules/ 中
 - 无角色声明 → 添加 "## Role: You are a [X] Agent"
 - 无跨域禁止 → 添加 "NEVER generate [X] code"
 - 自动加载文件使用中文 → 使用英文（节省 30-50% token）
+- specs/ 在根目录（标准 OSH）→ 移到 `openspec/specs/` 统一入口
 
 ---
 
@@ -95,9 +102,10 @@ project/
 ### 新项目快速启动
 
 ```bash
-mkdir -p project/{specs,openspec/{changes/_template,archive},.claude/{rules,skills}}
+mkdir -p project/openspec/{specs,changes/_template,archive}
+mkdir -p project/.claude/{rules,skills}
 mkdir -p project/backend project/frontend-web
-# 然后按 Phase 4 模板写入所有文件
+# 然后按 Fix 1 模板写入所有文件
 # 最后删除 AGENTS.md，运行 Phase 1 审计验证
 ```
 
@@ -122,7 +130,8 @@ mkdir -p project/backend project/frontend-web
 - [ ] 根 CLAUDE.md ≤ 120 行，仅导航中心
 - [ ] 每个子 CLAUDE.md：角色 + 概览 + 编码前 + 标准 + Superpowers + TDD + 构建
 - [ ] 每个子 CLAUDE.md 中明确禁止跨域
-- [ ] specs/api-contract.md 对所有代理具有权威性
+- [ ] openspec/specs/api-contract.md 对所有代理具有权威性
+- [ ] openspec/README.md 说明结构 + 职责分离
 - [ ] openspec/changes/_template/ 包含 proposal.md + spec.md
 - [ ] .claude/settings.json 包含权限 + 钩子 + 代理
 - [ ] 审查器工具 = `["Read", "Bash"]` 仅
@@ -132,6 +141,7 @@ mkdir -p project/backend project/frontend-web
 - [ ] 删除 AGENTS.md
 - [ ] 自动加载文件间零重复
 - [ ] 每个子 CLAUDE.md < 3K token
+- [ ] specs/ 在 openspec/ 内部（统一入口）
 
 ---
 
