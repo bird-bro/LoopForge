@@ -1,4 +1,4 @@
-# audit-osh-skills
+# OSH-skills
 
 中文文档 | [English](README.md)
 
