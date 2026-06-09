@@ -1,13 +1,15 @@
-# audit-osh-skill
+# audit-osh-skills
 
 中文文档 | [English](README.md)
 
 ---
 
-
 ## 概述
 
-`audit-osh` 是一个用于审计和优化项目 AI 协作结构的 Skill。它基于工业级的三层架构范式（OpenSpec + Superpowers + Harness），帮助团队建立规范化的 AI 协作流程。
+本仓库包含两个用于优化AI协作的 Skills，基于工业级三层架构范式（OpenSpec + Superpowers + Harness）：
+
+1. **`audit-osh`** — 审计和优化现有项目结构，符合OSH标准
+2. **`split-help`** — 将单体 CLAUDE.md 拆分为按技术栈分离的 Agent 文件
 
 **核心理念：**
 - **OpenSpec** 定义方向（WHAT）
@@ -282,3 +284,79 @@ AI 开始提出澄清问题（TDD 流程开始）
 - 现有项目优化：审计并改进现有协作流程
 - 团队协作标准化：确保多代理间的协作一致性
 - 代码质量提升：通过结构化规范减少错误和返工
+
+---
+
+# Skill 2: split-help
+
+## 概述
+
+`split-help` 是一个用于将单体 CLAUDE.md（由 `/init` 生成）拆分为按目录分离的 Agent CLAUDE.md 文件的 Skill，每个技术栈一个文件，包含正确的角色声明、跨域禁止规则、Superpowers 工作流和 TDD 纪律。
+
+## 为什么重要
+
+`/init` 将整个项目视为一个工作空间。它将 Java/MyBatis 模式和 Vue/Element Plus 模式放在一起。当 AI 读取时会产生混淆 —— 在修复 CSS bug 时看到 Java DI 模式。每个 Agent 应只看到自己的领域。
+
+## 适用场景
+
+- 在多技术栈 monorepo 上运行 `/init` 后
+- 单个 CLAUDE.md 有 200+ 行涵盖多个技术栈
+- 向现有项目添加新技术层时
+
+## 工作流程
+
+### Phase 1: 发现
+
+1. **读取单体文件**：完整读取根 CLAUDE.md。识别并分类每个部分：
+   - 业务背景 → 根 CLAUDE.md（导航）+ `openspec/project.md`
+   - 构建命令 → 按栈分离的 Agent 文件
+   - 代码模式 → 按栈分离的 Agent 文件
+   - API路径 → `specs/api-contract.md`
+   
+2. **与用户确认**：呈现发现结果，在继续之前请求确认
+
+### Phase 2: 生成 Agent CLAUDE.md 文件
+
+为每个技术栈生成 `{code-directory}/CLAUDE.md`，包含：
+- **角色**：明确声明（如 "You are a Backend Agent"）
+- **NEVER规则**：跨域禁止
+- **项目概览**：一行系统描述 + 技术栈
+- **编码前**：规范优先 + mock 优先工作流
+- **模块结构**：仅该栈的目录树
+- **编码标准**：栈特定模式
+- **Superpowers工作流**：5步命令序列
+- **TDD**：强制执行，由 Superpowers 保证
+- **构建命令**：栈特定命令
+
+### Phase 3: 重写根 CLAUDE.md
+
+生成所有 Agent 文件后，将根 CLAUDE.md 重写为导航中心：
+- 项目地图（目录树）
+- 业务背景（1-3 句）
+- 技术栈（一行表格）
+- 开发工作流
+- 构建&测试命令（最小化）
+
+**大小规则**：根 CLAUDE.md ≤ 120行
+
+### Phase 4: 验证
+
+生成后验证：
+- 无内容丢失
+- 自动加载文件间无重复
+- 每个 Agent 文件包含所有必需部分
+- 跨域禁止明确
+- 路径引用正确
+- 根 CLAUDE.md 是导航中心（≤ 120行）
+
+## 反模式修复
+
+| 反模式 | 修复 |
+|:---|:---|
+| 业务背景在每个 Agent 文件中 | 仅一行"System"；完整背景在根目录 |
+| API路径在 Agent 文件中 | 提取到 `specs/api-contract.md` |
+| 重复构建命令 | 每个命令在仅一个 Agent 文件中 |
+| Mobile + desktop在一个Agent文件 | 分离 —— 不同UI范式 |
+| 无角色声明 | 必须是 "## Role: You are a [Stack] [Role] Agent" |
+| 无TDD部分 | 总是添加 Superpowers Workflow + TDD 部分 |
+| 根 CLAUDE.md > 120行 | 将内容移到 Agent 文件或 `openspec/project.md` |
