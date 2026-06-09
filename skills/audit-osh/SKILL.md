@@ -33,7 +33,7 @@ Key principles: Spec as Code. TDD enforced (not a slogan). Skills on-demand. No 
 
 | # | Check | Criteria |
 |:--|:---|:---|
-| O1 | Shared spec docs | `specs/` has api-contract.md + data-model.md + error-codes.md |
+| O1 | Shared spec docs | `openspec/specs/` has api/spec.md + data/spec.md + errors/spec.md |
 | O2 | API contract authoritative | All agents reference it; frontend mocks from it; backend implements to it |
 | O3 | Delta proposal templates | `openspec/changes/_template/` with proposal.md (Why/What/Scope/Success Criteria/Constraints/Risks) + spec.md (Data Model/API/Business Rules/Error Handling) |
 | O4 | Change archive | `openspec/archive/` for completed proposals |
@@ -47,7 +47,7 @@ Key principles: Spec as Code. TDD enforced (not a slogan). Skills on-demand. No 
 |:--|:---|:---|
 | S1 | Agent role declared | Each CLAUDE.md starts with "You are a [Stack] [Role] Agent. Your scope: [...]" |
 | S2 | Cross-domain prohibition | Each agent states MUST NOT generate ("NEVER generate frontend/backend code") |
-| S3 | Superpowers command chain | 5 steps: brainstorm → writing-plans → executing-plans → code-review → verification-before-completion, PLUS `/superpowers:workflow activate tdd` |
+| S3 | Superpowers workflow | 5 steps: brainstorm → writing-plans → executing-plans → code-review → verification-before-completion. **Auto-triggered by OpenSpec commands (`/opsx:propose`, `/opsx:apply`) or development requests — no slash commands needed** |
 | S4 | Project rules with globs | `.claude/rules/` auto-loaded by file path matching |
 | S5 | Domain skills | `.claude/skills/` with YAML frontmatter; max 300 lines each |
 | S6 | Permissions configured | `.claude/settings.json` with allow/deny lists |
@@ -55,18 +55,21 @@ Key principles: Spec as Code. TDD enforced (not a slogan). Skills on-demand. No 
 | S8 | Custom agents | Reviewer (Read+Bash only) + coordinator in settings.json |
 | S9 | Context budget | Agent CLAUDE.md < 3K tokens; details in skills/ for on-demand load |
 
-### 1.3 Harness — "Orchestrate Collaboration" (H1–H8)
+### 1.3 Harness — "Orchestrate Collaboration" (H1–H11)
 
 | # | Check | Criteria |
 |:--|:---|:---|
 | H1 | Workspace separation | One subdir per tech stack with independent CLAUDE.md |
-| H2 | Shared spec accessible | All agents reference `../specs/` from working directory |
+| H2 | Shared spec accessible | All agents reference `../openspec/specs/` from working directory |
 | H3 | Mock-first frontend | Frontend mocks per API contract (MSW); never blocks on backend |
 | H4 | Git worktree isolation | Features in isolated worktrees |
 | H5 | Root CLAUDE.md is nav hub | ≤ 120 lines; project map + build + session commands |
 | H6 | Session management | `/resume`, `/branch`, `/rewind` for continuity |
 | H7 | No dead files | Every .md has clear load/trigger path |
 | H8 | Zero duplication | No rule in two auto-loaded files |
+| H9 | Dangerous commands denied | `rm -rf`, `git push --force`, `git reset --hard` in permissions.deny list — prevents irreversible destruction |
+| H10 | Hooks configured | SessionStart + PreToolUse + Stop hooks in settings.json — auto-reminders at key moments |
+| H11 | Custom agents defined | Reviewer (Read+Bash only, ensures objective review) + Coordinator in settings.json agents field |
 
 ---
 
@@ -75,9 +78,9 @@ Key principles: Spec as Code. TDD enforced (not a slogan). Skills on-demand. No 
 ```
 OpenSpec score    = O_yes / 7
 Superpowers score = S_yes / 9
-Harness score     = H_yes / 8
+Harness score     = H_yes / 11
 
-Overall = (O_yes + S_yes + H_yes) / 24
+Overall = (O_yes + S_yes + H_yes) / 27
 
   < 33%  → Pre-foundation
   33–66% → Foundation
@@ -112,9 +115,9 @@ project/
 │   ├── project.md                ← Business context, architecture (NO coding conventions)
 │   ├── specs/                    ← STATIC: Shared truth (inside openspec)
 │   │   ├── README.md             ← Explains role as shared truth
-│   │   ├── api-contract.md
-│   │   ├── data-model.md
-│   │   └── error-codes.md
+│   │   ├── api/spec.md
+│   │   ├── data/spec.md
+│   │   └── errors/spec.md
 │   ├── changes/                  ← DYNAMIC: Active proposals
 │   │   ├── _template/            ← proposal.md + spec.md
 │   │   └── <active-change>/      ← In-progress work
@@ -163,7 +166,7 @@ project/
 - Change process: proposal → review → implementation → verification → archive
 - Language: English required (saves 30-50% tokens)
 
-**`openspec/specs/api-contract.md`**:
+**`openspec/specs/api/spec.md`**:
 ```markdown
 # API Contract
 > Single source of truth for frontend-backend integration.
@@ -189,9 +192,9 @@ Response data: `{ records: [], total: 100, size: 20, current: 1 }`
 ```
 > Fill per project. Status codes and pagination format are project conventions — adjust as needed.
 
-**`openspec/specs/data-model.md`**: Core entities, fields, constraints, relationships.
+**`openspec/specs/data/spec.md`**: Core entities, fields, constraints, relationships.
 
-**`openspec/specs/error-codes.md`**: Unified error code table (enum, HTTP status, message, usage).
+**`openspec/specs/errors/spec.md`**: Unified error code table (enum, HTTP status, message, usage).
 
 **`openspec/changes/_template/proposal.md`**:
 ```markdown
@@ -220,8 +223,8 @@ Technical / Performance / Security / Compatibility
 ```markdown
 # Spec: <feature>
 
-## 1. Data Model — new/modified entities (ref openspec/specs/data-model.md)
-## 2. API Contract — new endpoints (ref openspec/specs/api-contract.md)
+## 1. Data Model — new/modified entities (ref openspec/specs/data/spec.md)
+## 2. API Contract — new endpoints (ref openspec/specs/api/spec.md)
 ## 3. Business Rules — condition → action, edge cases
 ## 4. Error Handling — scenario, error code, HTTP, user message
 ## 5. Frontend Pages (if applicable) — route, components, mocks
@@ -250,15 +253,22 @@ System / Stack / Database / Config (4-6 lines)
 Naming / Error Handling / Query Pattern / Response Format (≤30 lines)
 
 ## Superpowers Workflow
-/superpowers:brainstorm → /superpowers:writing-plans → /superpowers:executing-plans → /superpowers:code-review → /superpowers:verification-before-completion
-/superpowers:workflow activate tdd — mandatory
+**Auto-triggered when you propose development requests:**
+1. brainstorming — AI asks clarifying questions
+2. writing-plans — AI generates task list
+3. executing-plans — AI implements tasks with TDD
+4. code-review — AI reviews against specs
+5. verification-before-completion — AI runs tests before marking done
+
+**TDD enforced**: Write failing test first → Implement → Refactor
+
 Pre-commit: [test command]
 
 ## Build Commands
 [3-5 most-used commands]
 ```
 
-> Slash commands are Claude Code native, NOT bash. Do not wrap in code blocks. If Superpowers not installed, apply same discipline manually.
+> **Note**: Superpowers has no slash commands. It auto-triggers when you make development requests or use OpenSpec commands (`/opsx:propose`, `/opsx:apply`).
 
 ### Fix 4: Rules with Globs
 
@@ -284,7 +294,7 @@ globs: backend/**
     "deny": ["Bash(rm -rf:*)", "Bash(git push --force:*)", "Bash(git reset --hard:*)"]
   },
   "hooks": {
-    "SessionStart": [{"command": "echo '[project] Specs: specs/ | TDD | No cross-domain'"}],
+    "SessionStart": [{"command": "echo '[project] Specs: openspec/specs/ | TDD | No cross-domain'"}],
     "PreToolUse": [{"matcher": "Bash",
       "command": "grep -qE 'rm -rf|git push --force|git reset --hard' 2>/dev/null && echo '⚠️ Destructive' || true"}],
     "Stop": [{"command": "echo '[project] Verify all changes committed.'"}]
@@ -322,7 +332,7 @@ After applying fixes, re-run Phase 1 audit. Also test:
    - openspec/README.md     ← Structure explanation + responsibility separation
    - openspec/project.md    ← Business context
    - openspec/specs/        ← Static contracts (inside openspec)
-     - README.md, api-contract.md, data-model.md, error-codes.md
+     - README.md, api/spec.md, data/spec.md, errors/spec.md
    - openspec/changes/_template/  ← proposal.md + spec.md
    - openspec/archive/
 2. CREATE .claude/          ← Rules + skills + settings.json
@@ -346,7 +356,7 @@ After applying fixes, re-run Phase 1 audit. Also test:
 | Style guides in docs/ for AI | Move to `.claude/skills/` for auto-trigger |
 | No role declaration | "## Role: You are a [X] Agent" |
 | No cross-domain ban | Add "NEVER generate [X] code" |
-| TDD as plain text | Add Superpowers 5-step + `/superpowers:workflow activate tdd` |
+| TDD as plain text | Add Superpowers 5-step workflow (auto-triggered) |
 | All skills active | Skills in `.claude/skills/` — on-demand only |
 | Empty changes/ dir | Create `_template/proposal.md` + `spec.md` |
 | Reviewer has Write/Edit | Reviewer tools = `["Read", "Bash"]` only |
@@ -355,6 +365,10 @@ After applying fixes, re-run Phase 1 audit. Also test:
 | Modifying existing code | Overloading or new methods only |
 | Context window ignored | CLAUDE.md < 3K tokens; skills load on-demand |
 | specs/ at root level (standard OSH) | Move to `openspec/specs/` for unified entry |
+| No dangerous command deny | Add `rm -rf`, `git push --force` to permissions.deny (H9) |
+| No hooks configured | Add SessionStart + PreToolUse + Stop hooks (H10) |
+| No custom agents defined | Add reviewer + coordinator to settings.json agents (H11) |
+| Reviewer can modify code | Reviewer tools must be `["Read", "Bash"]` only |
 
 ---
 
@@ -387,7 +401,7 @@ mkdir -p project/backend project/frontend-web
 - [ ] Root CLAUDE.md ≤ 120 lines, nav hub only
 - [ ] Each sub-CLAUDE.md: Role + Overview + Before You Code + Standards + Superpowers + TDD + Build
 - [ ] Cross-domain prohibition explicit in every sub-CLAUDE.md
-- [ ] openspec/specs/api-contract.md authoritative for all agents
+- [ ] openspec/specs/api/spec.md authoritative for all agents
 - [ ] openspec/README.md explains structure + responsibility separation
 - [ ] openspec/changes/_template/ has proposal.md + spec.md
 - [ ] .claude/settings.json has permissions + hooks + agents
@@ -399,3 +413,30 @@ mkdir -p project/backend project/frontend-web
 - [ ] Zero duplication across auto-loaded files
 - [ ] Each sub-CLAUDE.md < 3K tokens
 - [ ] specs/ inside openspec/ (unified entry point)
+- [ ] Dangerous commands in permissions.deny (H9): `rm -rf`, `git push --force`, `git reset --hard`
+- [ ] Hooks configured (H10): SessionStart + PreToolUse + Stop
+- [ ] Custom agents defined (H11): reviewer + coordinator in settings.json
+
+---
+
+## OpenSpec-Superpowers Trigger Mechanism
+
+**How OpenSpec commands auto-trigger Superpowers:**
+
+```
+User: /opsx:propose add-login-feature
+        │
+        ▼
+Harness reads .claude/commands/opsx:propose
+        │
+        ▼
+Command file contains "activate Superpowers brainstorming"
+        │
+        ▼
+Superpowers brainstorming skill auto-triggers
+        │
+        ▼
+AI starts asking clarifying questions (TDD flow begins)
+```
+
+**Key insight**: `openspec init` generates command files that pre-wire the Superpowers trigger. This is the "integration protocol" between OpenSpec and Superpowers.
