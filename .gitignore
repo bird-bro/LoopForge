@@ -1,0 +1,2 @@
+# Allow .md files in skills directory (global gitignore ignores *.md)
+!skills/**/*.md
