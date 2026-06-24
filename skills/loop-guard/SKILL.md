@@ -1,6 +1,6 @@
 ---
-name: audit-osh
-description: 检查项目结构是否符合 OSH 架构。Audit and optimize a project's AI collaboration structure (CLAUDE.md, specs, skills, rules, agents) against the industrial-grade three-layer paradigm (OpenSpec + Superpowers + Harness). 
+name: loop-guard
+description: Loop Engineering 循环工程校验。检查项目结构是否符合 OSH 架构。Audit and optimize a project's AI collaboration structure (CLAUDE.md, specs, skills, rules, agents) against the industrial-grade three-layer paradigm (OpenSpec + Superpowers + Harness). 
 ---
 
 # Project AI Architecture Audit & Optimization

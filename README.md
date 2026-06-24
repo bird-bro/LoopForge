@@ -8,7 +8,7 @@
 
 This repository contains two Skills for AI collaboration optimization based on the industrial-grade three-layer paradigm (OpenSpec + Superpowers + Harness):
 
-1. **`audit-osh`** — Audit and optimize existing project structure against OSH standards
+1. **`loop-guard`** — Loop Engineering validation: audit and optimize existing project structure against OSH standards
 2. **`split-help`** — Split monolithic CLAUDE.md into per-stack Agent files
 
 **Core Philosophy:**

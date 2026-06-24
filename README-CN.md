@@ -8,7 +8,7 @@
 
 本仓库包含两个用于优化AI协作的 Skills，基于工业级三层架构范式（OpenSpec + Superpowers + Harness）：
 
-1. **`audit-osh`** — 审计和优化现有项目结构，符合OSH标准
+1. **`loop-guard`** — Loop Engineering 循环工程校验：审计和优化现有项目结构，符合OSH标准
 2. **`split-help`** — 将单体 CLAUDE.md 拆分为按技术栈分离的 Agent 文件
 
 **核心理念：**
