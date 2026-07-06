@@ -2,23 +2,28 @@
 
 [中文文档](README-CN.md) | English
 
-> 操作手册(对话剧本):[USAGE-PLAYBOOK.md](USAGE-PLAYBOOK.md)
+> 对话剧本(操作手册):Claude Code 版 [USAGE-PLAYBOOK.md](skills/loop-eng-cc/USAGE-PLAYBOOK.md) · Codex 版 [USAGE-PLAYBOOK-CODEX.md](skills/loop-eng-codex/USAGE-PLAYBOOK-CODEX.md)
 
 ---
 
 ## Overview
 
-A single Skill for AI collaboration optimization based on the industrial-grade three-layer paradigm (**OpenSpec + Superpowers + Harness**, a.k.a. OSH / Loop Engineering):
+AI collaboration optimization skills based on the industrial-grade three-layer paradigm (**OpenSpec + Superpowers + Harness**, a.k.a. OSH / Loop Engineering). Two parallel editions share one generator (`scaffold.sh` — single source of truth for all file templates):
 
-**`loop-eng`** — Scaffold, audit, and restructure a project's AI-collaboration structure against the OSH standard. Three modes in one skill:
+| Edition | Skill | AI tool | Live entry file | Discipline (HOW) | Loop driver |
+|:--|:--|:--|:--|:--|:--|
+| Claude Code | `loop-eng-cc` | Claude Code | `CLAUDE.md` | Superpowers skills in `.claude/skills/` | `/opsx:` slash commands |
+| Codex | `loop-eng-codex` | Codex | `AGENTS.md` | Encoded as instructions in `AGENTS.md` | `openspec` CLI + natural language |
+
+Both editions scaffold, audit, and restructure a project's AI-collaboration structure against the OSH standard. Three modes in each:
 
 | Mode | Purpose |
 |:--|:--|
 | **scaffold** | Generate a complete new framework from scratch via `scaffold.sh` |
 | **audit** | 32-check maturity scoring (E1–E4, O1–O8, S1–S9, H1–H11) |
-| **restructure** | Split a monolithic `CLAUDE.md` into per-stack agents + optimize |
+| **restructure** | Split a monolithic `CLAUDE.md` / `AGENTS.md` into per-stack agents + optimize |
 
-> v2: the previous `loop-guard` + `split-help` skills are merged into `loop-eng`. File templates now live in `scaffold.sh` (single source of truth) — the SKILL.md no longer duplicates them.
+> v2: the previous `loop-guard` + `split-help` skills are merged into `loop-eng-cc` (Claude Code edition); `loop-eng-codex` is the Codex edition. File templates live in `scaffold.sh` (single source of truth) — the SKILL.md files no longer duplicate them.
 
 **Core Philosophy:**
 - **OpenSpec** defines direction (WHAT)
@@ -27,34 +32,53 @@ A single Skill for AI collaboration optimization based on the industrial-grade t
 
 ## Install
 
-Copy the skill into your project (or any project that should use it):
+### Claude Code — `loop-eng-cc`
+
+Copy the skill into your project (auto-loaded from `.claude/skills/`):
 
 ```bash
-cp -r skills/loop-eng /path/to/project/.claude/skills/loop-eng
+cp -r skills/loop-eng-cc /path/to/project/.claude/skills/loop-eng-cc
 ```
 
-The skill is auto-loaded by Claude Code from `.claude/skills/`.
+Trigger via the `/loop-eng-cc` slash command, or just describe the task in natural language.
+
+### Codex — `loop-eng-codex`
+
+Install globally into Codex's skills directory, then restart Codex:
+
+```bash
+cp -RL skills/loop-eng-codex ~/.codex/skills/loop-eng-codex
+```
+
+`-L` dereferences the `scaffold.sh` symlink into a real file (required — the symlink points at `../loop-eng-cc/scaffold.sh`, which does not exist inside `~/.codex/skills/`). After restart, the skill auto-triggers from its `description` — there is no slash command in Codex.
+
+> If you previously copied the old Claude version into `~/.codex/skills/loop-eng`, remove it first to avoid both skills triggering on the same intent: `rm -rf ~/.codex/skills/loop-eng`.
 
 ## Scaffold a new project
 
+The same `scaffold.sh` powers both editions; only `--tools` differs:
+
 ```bash
-# default: backend + frontend web stacks, runs `openspec init` automatically
-./skills/loop-eng/scaffold.sh myapp
+# Claude Code (default --tools claude)
+./skills/loop-eng-cc/scaffold.sh myapp
+
+# Codex (--tools codex → openspec init generates Codex-flavored files)
+./skills/loop-eng-codex/scaffold.sh myapp --tools codex
 
 # three stacks (web + mobile)
-./skills/loop-eng/scaffold.sh myapp --stacks backend,frontend,frontend-mobile
+./skills/loop-eng-codex/scaffold.sh myapp --stacks backend,frontend,frontend-mobile --tools codex
 
 # custom target dir + skip init
-./skills/loop-eng/scaffold.sh myapp --dir ./projects/myapp --no-init
+./skills/loop-eng-cc/scaffold.sh myapp --dir ./projects/myapp --no-init
 ```
 
-Options: `--stacks`, `--dir`, `--backend-dir`, `--frontend-dir`, `--mobile-dir`, `--tools` (default `claude`), `--no-init`.
+Options: `--stacks`, `--dir`, `--backend-dir`, `--frontend-dir`, `--mobile-dir`, `--tools` (default `claude`; use `codex` or `codex,claude`), `--no-init`.
 
 ### What `scaffold.sh` generates
 
 ```
 myapp/
-├── CLAUDE.md                 ← nav hub (≤120 lines)
+├── CLAUDE.md                 ← nav hub (≤120 lines) — Claude Code entry
 ├── AGENTS.md                 ← nav hub for Codex (mirrors CLAUDE.md)
 ├── openspec/                 ← WHAT: README, project.md, specs/{api,data,errors}, changes/_template, archive
 ├── .claude/                  ← HOW: settings.json (perms+hooks), rules/, agents/{reviewer,coordinator}
@@ -63,21 +87,23 @@ myapp/
 └── frontend-web/{CLAUDE,AGENTS}.md ← Frontend Agent (Claude Code / Codex)
 ```
 
-> `CLAUDE.md` is the Claude Code entry; `AGENTS.md` is the Codex entry. The scaffold generates both (mirrored), so the same project works in either tool. The `loop-eng` SKILL itself is Claude-Code-side; in Codex, drive work via the `scaffold.sh` CLI + the generated `AGENTS.md` files.
+`CLAUDE.md` and `AGENTS.md` are always generated together (mirrored), so the same project works in either tool. Non-destructive: existing files are skipped, safe to re-run.
 
-Non-destructive: existing files are skipped, so it is safe to re-run.
+### What you must install separately (per edition)
 
-### What you must install separately (referenced by audit, not generated)
+**Both:** OpenSpec CLI — `npm i -g @fission-ai/openspec@latest` (scaffold runs `openspec init` for you).
 
-- **OpenSpec CLI**: `npm i -g @fission-ai/openspec@latest` (scaffold runs `openspec init` for you)
-- **Superpowers skills**: brainstorm, writing-plans, executing-plans, code-review, verification-before-completion
-- **`frontend-design` skill** (frontend projects only)
+**Claude Code only:** Superpowers skills (`brainstorm`, `writing-plans`, `executing-plans`, `code-review`, `verification-before-completion`) and `frontend-design` (frontend projects). These live in `.claude/skills/` and are auto-triggered by the `/opsx:` commands.
+
+**Codex:** nothing extra — the Superpowers 5-step discipline is already encoded as instructions in each generated `AGENTS.md`, and the loop is driven by the `openspec` CLI.
 
 Then fill `[BRACKETS]` placeholders in `openspec/project.md`, `openspec/specs/*`, and per-stack `CLAUDE.md` / `AGENTS.md`.
 
 ## Audit an existing project
 
 Trigger the skill (e.g. "audit my project structure"). It runs Phase 0 (environment E1–E4) + Phase 1 (32 checks) and outputs a diagnostic table, maturity grade, top issues, and an action plan.
+
+> Codex note: `scaffold.sh check` probes `.claude/`-based structures for its E3/E4/S4/S5/S6/H9 lines — those are Claude-Code-specific and report PARTIAL/FAIL in a Codex-only project. Treat them as N/A and use the semantic criteria in `skills/loop-eng-codex/SKILL.md` for the Codex verdict.
 
 ### Maturity scoring
 
@@ -95,7 +121,7 @@ Overall = (E + O + S + H) / 32
 
 ## Restructure a monolith
 
-When a single `CLAUDE.md` covers multiple stacks, or the audit score is low: trigger the skill to split it into per-stack Agent `CLAUDE.md` files, rewrite the root as a nav hub, and apply the Phase 5 restructuring order.
+When a single `CLAUDE.md` (Claude) or `AGENTS.md` (Codex) covers multiple stacks, or the audit score is low: trigger the skill to split it into per-stack Agent files, rewrite the root as a nav hub, and apply the Phase 5 restructuring order.
 
 ## License
 

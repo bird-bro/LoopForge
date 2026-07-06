@@ -1,5 +1,5 @@
 ---
-name: loop-eng
+name: loop-eng-cc
 description: Loop Engineering — scaffold, audit, and restructure an AI-collaboration project against the OpenSpec + Superpowers + Harness (LoopEng) paradigm. Three modes — scaffold (generate a complete new framework via scaffold.sh), audit (32-check maturity scoring), restructure (split a monolithic CLAUDE.md into per-stack agents + optimize). Use when the user asks to "set up loop engineering", "scaffold a LoopEng project", "audit project structure", "split CLAUDE.md", or "optimize AI collaboration structure".
 ---
 

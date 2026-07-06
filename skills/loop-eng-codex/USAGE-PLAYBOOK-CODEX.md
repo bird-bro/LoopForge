@@ -1,0 +1,227 @@
+# loop-eng-codex 对话剧本 · Codex 版操作手册
+
+> 本手册以「**用户说 → AI 做**」的对话形式,说明在 Codex 中如何用 `loop-eng-codex` skill 搭建 / 接入 Loop 工程(OpenSpec + Superpowers + Harness)。
+>
+> 它是 [USAGE-PLAYBOOK.md](../loop-eng-cc/USAGE-PLAYBOOK.md)(Claude Code 版)的 Codex 对应版。两者骨架一致,差异在于:**Codex 没有 `/loop-eng-cc`、`/opsx:` 斜杠命令,也没有 `.claude/skills/` 的 Superpowers 技能**——这些在 Codex 里改由「自然语言 + `openspec` CLI + `AGENTS.md` 指令」来驱动。
+>
+> 关键心法不变:**OpenSpec 定方向(WHAT)、Superpowers 强纪律(HOW)、Harness 编协作(WHO)**;每个功能走闭环 `propose → apply → verify → archive`,这就是 "Loop"。
+>
+> 剧本约定:**用户** = 看本手册并下指令的人;**AI** = 执行指令的 Codex(即 loop-eng-codex skill 的承载者)。
+
+---
+
+## Codex 与 Claude 版差异速查
+
+| 维度 | Claude Code 版 | Codex 版(本手册) |
+|:--|:--|:--|
+| 触发 skill | `/loop-eng-cc` 斜杠命令 或 自然语言 | 仅自然语言(skill 按 `description` 自动触发) |
+| 入口文件 | `CLAUDE.md` | `AGENTS.md`(`CLAUDE.md` 是镜像,Codex 不读) |
+| 提案/应用/验证/归档 | `/opsx:propose` / `apply` / `verify` / `archive` 斜杠命令 | `openspec new change` / 实现 / `openspec validate`+写 `verify.md` / `openspec archive` |
+| 纪律(Superpowers) | `.claude/skills/` 里五个技能,由斜杠命令自动触发 | 没有独立技能;纪律写进 `AGENTS.md` 作为指令,AI 按上下文遵循 |
+| 会话续接 | `/resume` `/branch` `/rewind` | Codex 自身 goal/plan + 自然对话续接 |
+| openspec init | `--tools claude`(默认) | `--tools codex`(或 `codex,claude` 双工具) |
+
+> scaffold.sh **总会**同时生成 `CLAUDE.md` 与 `AGENTS.md`(内容镜像)。纯 Codex 项目里 `CLAUDE.md` 是死文件,可留着备用或删;编辑只动 `AGENTS.md`。
+
+---
+
+## 三种模式速查
+
+| 用户想做的事 | CLI 命令 | 或对 AI 说 |
+|:--|:--|:--|
+| 预览会生成哪些文件 | `./scaffold.sh list` | "预览脚手架会生成什么" |
+| 生成完整框架(Codex 入口) | `./scaffold.sh myapp --tools codex` | "给 myapp 搭 loop 脚手架,Codex 优先" |
+| 自检环境 | `./scaffold.sh check` | "自检 loop-eng-codex 环境" |
+| 审计项目合规度 | `./scaffold.sh check ./myapp` | "审计 ./myapp 的 OSH 合规度" |
+| 拆分单体入口文件 | skill restructure 模式 | "把 AGENTS.md 拆成按栈的 agent" |
+| 全量 32 项审计 | skill audit 模式 | "对项目做完整 32 项审计" |
+
+> **如何触发:** 把 `loop-eng-codex/` 放进 `~/.codex/skills/loop-eng-codex/` 后重启 Codex,skill 会按 `description` 自动激活。你也可以直接说"用 loop-eng-codex 给 X 搭脚手架",AI 会选对应模式或 CLI 执行——无需任何斜杠命令。
+
+---
+
+## 场景一:新项目(从零搭建)
+
+### 对话 1 · 生成脚手架
+
+**用户**:
+> 新项目 myapp,技术栈后端 Spring Boot 3 + 前端 Vue3,搭一个 loop 工程框架,放到 `./myapp`,Codex 优先。
+
+**AI**:确认技术栈后执行:
+```bash
+./scaffold.sh myapp --stacks backend,frontend --dir ./myapp --tools codex
+```
+自动跑 `openspec init --tools codex` 并生成 `openspec/`、各栈 `AGENTS.md`(Codex 入口)+ `CLAUDE.md`(Claude 镜像)、根 `AGENTS.md` 导航中心。然后 AI 列出待填占位符与需另装的组件。
+
+> 只想看不落地:`./scaffold.sh list --stacks backend,frontend`
+> 双工具(同时用 Claude + Codex):`--tools codex,claude`
+
+### 对话 2 · 填业务内容
+
+**用户**:
+> myapp 是图书借阅系统:后端 Java17 + MyBatis + MySQL8,前端 Vue3 + Element Plus。请把 `openspec/project.md` 和各栈 `AGENTS.md` 的占位符填了。
+
+**AI**:读取用户提供的信息,填充 `openspec/project.md`(系统说明 / 技术栈表 / 模块图 / 架构)、`backend/AGENTS.md` 与 `frontend-web/AGENTS.md` 的 `[方括号]` 占位,并把业务上下文与技术栈写入根 `AGENTS.md`。
+
+> 纯 Codex 项目:只改 `AGENTS.md`;若你也在 Claude Code 里开同一项目,记得把镜像的 `CLAUDE.md` 同步(scaffold 已镜像,后续手动改动需自己保持一致)。
+
+### 对话 3 · 审计校验
+
+**用户**:
+> 审计 `./myapp` 合规度。
+
+**AI**:跑 `./scaffold.sh check ./myapp`(快速审计)。要更细则进 skill audit 模式跑全量 32 项(E1–E4 / O1–O8 / S1–S9 / H1–H11),给出成熟度等级 + 修复清单。
+
+> ⚠️ **Codex 审计盲区**:`check` 里 E3(`.claude/commands/opsx:*`)、E4(`.claude/skills/frontend-design`)、H9(`.claude/settings.json` 危险命令黑名单)是 Claude Code 专有结构。纯 Codex 项目这几项会报 PARTIAL/FAIL——属误报,读分数时心里扣掉这几项;真正要确认的是 AGENTS.md 入口、openspec 结构、各栈 agent 八段、跨域禁令等工具无关项。
+
+### 对话 4 · 开始第一个功能(进入 Loop 循环)
+
+Claude 版用 `/opsx:propose` 斜杠命令;**Codex 版改用 `openspec` CLI + 自然语言**:
+
+**用户**(在 `backend/` 目录起会话):
+> 给 myapp 提一个"图书借阅"功能变更,走 loop 流程。
+
+**AI**:
+1. **提案(propose)** —— 先澄清需求(遵循 AGENTS.md 里的 brainstorm 纪律),然后:
+   ```bash
+   openspec new change add-book-borrow      # 生成 changes/add-book-borrow/ 目录与模板
+   openspec instructions --change add-book-borrow   # 输出该 artifact 的富化指引
+   ```
+   填写 `proposal.md`、`spec.md`,写明 WHEN/THEN 场景(它们就是后面 verify 的 L2 用例)。
+2. **实现(apply)** —— 按 `tasks.md` 用 TDD(红→绿→重构)实现,前后端跨域隔离、mock 优先;每完成一个任务跑该栈构建命令做 L1 快检。
+3. **验证(verify)** —— 工具无关三层:
+   - L1 构建:跑各栈 build 命令(配置在 `openspec/verify.config.yaml`)
+   - L2 spec 对齐:`openspec validate add-book-borrow`
+   - L3 测试:跑测试套件
+   - 把结果写入 `verify.md`(用 `openspec/verify-result.template.md` 模板,YAML frontmatter 里 `overall` 字段须可机读,归档门禁会查它)
+4. **归档(archive)** —— `verify.md` 显示 `PASS` 后:
+   ```bash
+   openspec archive add-book-borrow         # 归档并更新主 specs
+   ```
+
+> 没有 Superpowers 技能自动触发,但 AGENTS.md 已把"brainstorm → 写计划 → 执行 → code review → 完成前验证"写成指令,AI 按上下文遵循即可。你也可直接喊"先 brainstorm 一下需求"来强化。
+
+---
+
+## 场景二:老项目(接入 / 重构)
+
+### 对话 1 · 先自检 + 审计现状
+
+**用户**:
+> 老项目在 `./legacy`,有个单体 `AGENTS.md`(或 `CLAUDE.md`),想接入 loop 工程。先看现状。
+
+**AI**:① `./scaffold.sh check`(环境自检);② `./scaffold.sh check ./legacy`(结构合规度);③ 进 skill audit 模式做全量 32 项审计。产出:诊断表 + 成熟度 + Top 问题 + 行动计划(按 Phase 5 顺序)。
+
+> 同样注意 E3/E4/H9 的 `.claude` 误报(见场景一对话 3)。
+
+### 对话 2 · 拆分单体入口文件
+
+**用户**:
+> 把 `./legacy` 的单体 `AGENTS.md` 拆成按技术栈的 agent 文件。
+
+**AI**:进入 skill **restructure** 模式:
+1. 读单体 `AGENTS.md`,按栈分类段落(Java 段落→backend、Vue 段落→frontend、API 路径→`openspec/specs/`、构建命令按工具分流);
+2. 跟用户确认技术栈与目录映射;
+3. 生成各栈 `AGENTS.md`(含 Role / `NEVER` 跨域禁令 / Superpowers 五步纪律 / TDD / Build);
+4. 重写根 `AGENTS.md` 为导航中心(≤120 行);
+5. 删重复、校验无内容丢失、无死文件。
+
+> 纯 Codex:以 `AGENTS.md` 为主拆分对象;若同时用 Claude,再镜像出对应 `CLAUDE.md`。
+
+### 对话 3 · 为已有代码补 spec
+
+**用户**:
+> `legacy` 里已有 user 模块后端代码,但没 spec。请把它的 API 契约反向补进 `openspec/specs/`。
+
+**AI**:读现有 user 模块代码与接口,抽取为 `openspec/specs/api/spec.md`、`data/spec.md`、`errors/spec.md`(补 WHEN/THEN 场景),让 spec 成为前后端共同真相。后续改动一律走 `openspec new change` 增量,不再裸改代码。
+
+### 对话 4 · 审计验证
+
+**用户**:
+> 重构完再审计一次 `./legacy`。
+
+**AI**:重跑 `./scaffold.sh check ./legacy` + 全量审计,对比前后成熟度,确认:无重复、无死文件、各 agent 含必备 8 段、跨域禁令显式、根 `AGENTS.md` ≤120 行。
+
+---
+
+## 场景三:日常 Loop 循环(新 / 老通用)
+
+每个功能都走闭环。Codex 版用 `openspec` CLI 驱动,纪律由 AGENTS.md 承载:
+
+| 阶段 | 用户输入 | AI 做 |
+|:--|:--|:--|
+| 提案 | "提一个 X 变更" | 澄清需求 → `openspec new change <name>` → 填 proposal + spec(WHEN/THEN) |
+| 实现 | "实现这个变更" | 按 tasks 用 TDD:红→绿→重构,前后端跨域隔离、mock 优先 |
+| 验证 | "验证 <name>" | L1 构建 + L2 `openspec validate <name>` + L3 测试 → 写 `verify.md` 凭证 |
+| 归档 | "归档 <name>" | 查 `verify.md` 门禁(`overall: PASS`)→ `openspec archive <name>` |
+
+常用 CLI 辅助:
+```bash
+openspec list                       # 列出活跃 changes
+openspec show <name>                # 查看某个 change
+openspec status --change <name>     # 看完成度
+openspec validate --all             # 全量校验 changes + specs
+openspec instructions --change <n>  # 取该 artifact 富化指引
+```
+
+> 会话续接:Codex 没有 `/resume` `/branch` `/rewind`。用 Codex 自身的 goal/plan 体系跟踪多步任务,普通对话天然续接;要"回到某状态"就开新会话并让 AI 先读 `openspec/` 与 `AGENTS.md` 恢复上下文。
+
+---
+
+## 速查:可直接复制的命令
+
+```bash
+# 新建(Codex 优先,默认 backend+frontend,自动 openspec init)
+./scaffold.sh <name> --dir ./<name> --tools codex
+
+# 三栈(web + mobile)
+./scaffold.sh <name> --stacks backend,frontend,frontend-mobile --tools codex
+
+# 双工具(Claude + Codex 都用)
+./scaffold.sh <name> --tools codex,claude
+
+# 预览不落地
+./scaffold.sh list --stacks backend,frontend
+
+# 自检环境
+./scaffold.sh check
+
+# 审计项目
+./scaffold.sh check ./<project>
+
+# 跳过 init(稍后手动 openspec init)
+./scaffold.sh <name> --no-init
+
+# 日常 loop(替代 /opsx: 斜杠命令)
+openspec new change <name>           # 提案
+openspec validate <name>             # 验证(L2 spec 对齐)
+openspec archive <name>              # 归档
+```
+
+**让 AI 代劳**:直接说"用 loop-eng-codex 给 X 搭脚手架 / 审计 X / 把 X 的 AGENTS.md 拆开 / 提一个 X 变更并走 loop",AI 会选对应模式或 CLI 执行。
+
+---
+
+## 成熟度评分参考
+
+`check` 输出 `通过/总数 (百分比)`,对应等级:
+
+| 百分比 | 等级 |
+|:--|:--|
+| < 33% | 基础建设前 |
+| 33–66% | 基础级 |
+| 66–90% | 质量级 |
+| > 90% | 工业级 |
+
+> `check` 是 CLI 快照(含 O7 CJK 扫描、S5 Superpowers 检测、O4 归档错位检测等可自动判定项);完整 32 项审计(含 S3 工作流、H4 工作树等需语义判断的项)请让 AI 进 skill audit 模式。
+>
+> Codex 提示:E3/E4/H9 在纯 Codex 项目属误报,扣掉这几项再看分数更准;S5(Superpowers 检测)也会因 `.claude/skills/` 缺失而 PARTIAL,但纪律已写进 AGENTS.md,功能上不缺。
+
+---
+
+## 附:把 skill 装进 Codex
+
+```bash
+cp -RL skills/loop-eng-codex ~/.codex/skills/loop-eng-codex
+```
+`-L` 把 `scaffold.sh` 符号链接解引用成实体文件(它指向 `../loop-eng-cc/scaffold.sh`,在 `~/.codex/skills/` 内不存在)。重启 Codex 即可按 `description` 自动触发。`loop-eng-codex/` 目录里有 `SKILL.md`(必需,frontmatter `name`+`description`)+ `scaffold.sh`(CLI)。可选补 `agents/openai.yaml` 拿到界面显示名,不影响触发。
