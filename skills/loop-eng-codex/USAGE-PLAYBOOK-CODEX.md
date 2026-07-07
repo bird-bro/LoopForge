@@ -2,9 +2,9 @@
 
 > 本手册以「**用户说 → AI 做**」的对话形式,说明在 Codex 中如何用 `loop-eng-codex` skill 搭建 / 接入 Loop 工程(OpenSpec + Superpowers + Harness)。
 >
-> 它是 [USAGE-PLAYBOOK.md](../loop-eng-cc/USAGE-PLAYBOOK.md)(Claude Code 版)的 Codex 对应版。两者骨架一致,差异在于入口文件与命令形态:`openspec init --tools codex` 会为 Codex 生成 `~/.codex/prompts/opsx-*.md` 斜杠命令(`/opsx:propose` 等)与项目内 `.codex/skills/openspec-*` 技能(用 `$skill-name` 调用);Superpowers 纪律则写进 `AGENTS.md` 作为指令。
+> 它是 [USAGE-PLAYBOOK.md](../loop-eng-cc/USAGE-PLAYBOOK.md)(Claude Code 版)的 Codex 对应版。两者骨架一致,差异在于入口文件与命令形态:`openspec init --tools codex` 为 Codex 生成项目内 `.codex/skills/openspec-*` 技能,用 `$skill-name` 调用(如 `$openspec-propose` / `$openspec-apply-change` / `$openspec-archive-change`)+ `openspec` CLI + 自然语言;Superpowers 纪律则写进 `AGENTS.md` 作为指令。
 >
-> 关键心法不变:**OpenSpec 定方向(WHAT)、Superpowers 强纪律(HOW)、Harness 编协作(WHO)**;每个功能走闭环 `propose → apply → verify → archive`,这就是 "Loop"。
+> 关键心法不变:**OpenSpec 定方向(WHAT)、Superpowers 强纪律(HOW)、Harness 编协作(WHO)**;每个功能走闭环 `propose → apply → verify → archive`(页面/UI 开发时,apply 前先 `design` HTML 原型),这就是 "Loop"。
 >
 > 剧本约定:**用户** = 看本手册并下指令的人;**AI** = 执行指令的 Codex(即 loop-eng-codex skill 的承载者)。
 
@@ -16,7 +16,7 @@
 |:--|:--|:--|
 | 触发 skill | `/loop-eng-cc` 斜杠命令 或 自然语言 | `$loop-eng-codex` 显式调用 或 按 `description` 自动触发 |
 | 入口文件 | `CLAUDE.md` | `AGENTS.md`(`CLAUDE.md` 是镜像,Codex 不读) |
-| 提案/应用/验证/归档 | `/opsx:propose` / `apply` / `verify` / `archive` 斜杠命令 | 同样可用 `/opsx:` 斜杠命令;或 `openspec new change` / 实现 / `openspec validate`+写 `verify.md` / `openspec archive` |
+| 提案/应用/验证/归档 | `/opsx:propose` / `apply` / `verify` / `archive` 斜杠命令 | 用 `$openspec-propose` / `$openspec-apply-change` / `$openspec-archive-change`(`$` 技能)或 `openspec` CLI(verify 走 `openspec validate`+`verify.md`) |
 | 纪律(Superpowers) | `.claude/skills/` 里五个技能,由斜杠命令自动触发 | 纪律写进 `AGENTS.md` 作为指令(不依赖插件),AI 按上下文遵循 |
 | 会话续接 | `/resume` `/branch` `/rewind` | Codex 自身 goal/plan + 自然对话续接 |
 | openspec init | `--tools claude`(默认) | `--tools codex`(或 `codex,claude` 双工具) |
@@ -76,7 +76,7 @@
 
 ### 对话 4 · 开始第一个功能(进入 Loop 循环)
 
-Claude 版用 `/opsx:propose` 斜杠命令;**Codex 版同样可用 `/opsx:propose`(由 `~/.codex/prompts/` 提供),或用 `openspec` CLI + 自然语言**:
+Claude 版用 `/opsx:propose` 斜杠命令;**Codex 版用 `$openspec-propose`(`$` 技能)或 `openspec` CLI + 自然语言**:
 
 **用户**(在 `backend/` 目录起会话):
 > 给 myapp 提一个"图书借阅"功能变更,走 loop 流程。
@@ -146,11 +146,12 @@ Claude 版用 `/opsx:propose` 斜杠命令;**Codex 版同样可用 `/opsx:propos
 
 ## 场景三:日常 Loop 循环(新 / 老通用)
 
-每个功能都走闭环。Codex 版可用 `/opsx:` 斜杠命令或 `openspec` CLI 驱动,纪律由 AGENTS.md 承载:
+每个功能都走闭环。Codex 版用 `$` 技能(`$openspec-propose`/`$openspec-apply-change`/`$openspec-archive-change`)或 `openspec` CLI 驱动,纪律由 AGENTS.md 承载:
 
 | 阶段 | 用户输入 | AI 做 |
 |:--|:--|:--|
 | 提案 | "提一个 X 变更" | 澄清需求 → `openspec new change <name>` → 填 proposal + spec(WHEN/THEN) |
+| 设计 | "页面要做成什么样" | (仅页面/UI 开发,apply 前)先做 HTML 原型,两条路:① 纯代码优先 — 直接写 HTML/CSS(或 React+Tailwind/shadcn)→ `browser` 渲染 → `screenshot` 自检(简单页/快速原型最快);② `frontend-app-builder` skill — Codex 当资深前端设计师 → Image Gen 出视觉概念稿 → 用户确认 → 忠实实现成代码 → `browser` + `view_image` 对比到 10/10 还原(全程不碰 Figma)。主力栈:`build-web-apps`(`frontend-app-builder` + `shadcn-best-practices`)+ `browser` + `screenshot`;静态/单文件默认 HTML/CSS,复杂 app 才上 React+Vite |
 | 实现 | "实现这个变更" | 按 tasks 用 TDD:红→绿→重构,前后端跨域隔离、mock 优先 |
 | 验证 | "验证 <name>" | L1 构建 + L2 `openspec validate <name>` + L3 测试 → 写 `verify.md` 凭证 |
 | 归档 | "归档 <name>" | 查 `verify.md` 门禁(`overall: PASS`)→ `openspec archive <name>` |
@@ -192,7 +193,7 @@ openspec instructions --change <n>  # 取该 artifact 富化指引
 # 跳过 init(稍后手动 openspec init)
 ./scaffold.sh <name> --no-init
 
-# 日常 loop(CLI 方式;也可用 /opsx: 斜杠命令)
+# 日常 loop(CLI 方式;或用 $ 技能如 $openspec-apply-change)
 openspec new change <name>           # 提案
 openspec validate <name>             # 验证(L2 spec 对齐)
 openspec archive <name>              # 归档

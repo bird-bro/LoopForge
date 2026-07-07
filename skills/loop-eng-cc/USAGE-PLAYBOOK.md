@@ -4,7 +4,7 @@
 >
 > 三种触发方式:① **直接跑 CLI**(`scaffold.sh`);② **自然语言让 AI(Claude)代劳**——AI 会调用对应 skill 模式或 CLI;③ **Claude Code 直接 `/loop-eng-cc`**——skill 装在 `~/.claude/skills/loop-eng-cc/`(或项目 `.claude/skills/`)后即可用,激活后再说明任务(scaffold/audit/restructure),模式由意图自动判定。
 >
-> 关键心法:**OpenSpec 定方向(WHAT)、Superpowers 强纪律(HOW)、Harness 编协作(WHO)**;每个功能走闭环 `propose → apply → verify → archive`,这就是 "Loop"。
+> 关键心法:**OpenSpec 定方向(WHAT)、Superpowers 强纪律(HOW)、Harness 编协作(WHO)**;每个功能走闭环 `propose → apply → verify → archive`(页面/UI 开发时,apply 前先 `design` HTML 原型),这就是 "Loop"。
 >
 > 剧本约定:**用户** = 看本手册并下指令的人;**AI** = 执行指令的 Claude(即 loop-eng-cc skill 的承载者)。
 
@@ -103,6 +103,7 @@
 | 阶段 | 用户输入 | AI 做 |
 |:--|:--|:--|
 | 提案 | `/opsx:propose <change>` | brainstorm 澄清 → 写 proposal + spec(WHEN/THEN) |
+| 设计 | (UI 开发时,`/opsx:apply` 前) | 先做 HTML 原型,两条路:① 纯代码优先 — 直接写 HTML/CSS(或 React+Tailwind/shadcn)→ `browser` 渲染 → `screenshot` 自检(简单页/快速原型最快);② `frontend-app-builder` skill — Claude 当资深前端设计师 → Image Gen 出视觉概念稿 → 用户确认 → 忠实实现成代码 → `browser` + `view_image` 对比到 10/10 还原(全程不碰 Figma)。主力栈:`build-web-apps`(`frontend-app-builder` + `shadcn-best-practices`)+ `browser` + `screenshot`;静态/单文件默认 HTML/CSS,复杂 app 才上 React+Vite |
 | 实现 | `/opsx:apply` | TDD:红→绿→重构,前后端跨域隔离、mock 优先 |
 | 验证 | `/opsx:verify` | 三层验证(L1 构建 / L2 spec 对齐 / L3 测试),写 `verify.md` 凭证 |
 | 归档 | `/opsx:archive` | 检查 `verify.md` 门禁后移入 `openspec/archive/` |

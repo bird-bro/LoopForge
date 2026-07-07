@@ -1,13 +1,13 @@
 ---
 name: loop-eng-codex
-description: Loop Engineering (Codex edition) — scaffold, audit, and restructure an AI-collaboration project against the OpenSpec + Superpowers + Harness (LoopEng) paradigm, adapted for Codex. AGENTS.md is the live entry file; the propose→verify→archive loop is driven by `/opsx:` slash commands + the `openspec` CLI; skills are invoked via `$skill-name` (e.g. `$loop-eng-codex`). Three modes — scaffold (generate a complete framework via scaffold.sh), audit (32-check maturity scoring), restructure (split a monolithic AGENTS.md/CLAUDE.md into per-stack agents + optimize). Use when the user asks to "set up loop engineering", "scaffold a LoopEng project", "audit project structure", "split AGENTS.md", or "optimize AI collaboration structure" in Codex.
+description: Loop Engineering (Codex edition) — scaffold, audit, and restructure an AI-collaboration project against the OpenSpec + Superpowers + Harness (LoopEng) paradigm, adapted for Codex. AGENTS.md is the live entry file; the propose→verify→archive loop is driven by `$skill-name` invocation (`$openspec-propose` / `$openspec-apply-change` / `$openspec-archive-change`) + the `openspec` CLI; skills are invoked via `$skill-name` (e.g. `$loop-eng-codex`). Three modes — scaffold (generate a complete framework via scaffold.sh), audit (32-check maturity scoring), restructure (split a monolithic AGENTS.md/CLAUDE.md into per-stack agents + optimize). Use when the user asks to "set up loop engineering", "scaffold a LoopEng project", "audit project structure", "split AGENTS.md", or "optimize AI collaboration structure" in Codex.
 ---
 
 # Loop Engineering — Scaffold · Audit · Restructure (Codex Edition)
 
 **OpenSpec defines direction (WHAT), Superpowers enforces discipline (HOW), Harness orchestrates collaboration (WHO).**
 
-> **Codex edition.** `openspec init --tools codex` generates Codex-native drivers: global `~/.codex/prompts/opsx-*.md` slash commands (`/opsx:propose`, `/opsx:apply`, `/opsx:archive`, `/opsx:explore`, `/opsx:sync`) and project-local `.codex/skills/openspec-*` skills. The propose → verify → archive loop is driven by `/opsx:` commands and/or the `openspec` CLI; Codex skills are invoked via `$skill-name` (e.g. `$loop-eng-codex`) or auto-triggered by their `description`. The Superpowers 5-step discipline is encoded as instructions inside `AGENTS.md`. `AGENTS.md` is Codex's live entry file; `CLAUDE.md` is the Claude Code mirror (also generated, but Codex does not read it).
+> **Codex edition.** `openspec init --tools codex` generates project-local `.codex/skills/openspec-*` skills — `openspec-propose`, `openspec-apply-change`, `openspec-archive-change`, `openspec-explore`, `openspec-sync-specs` — invoked via `$skill-name`. Codex drives the propose → verify → archive loop via `$` skills + the `openspec` CLI + natural language. Skills also auto-trigger by their `description`. The Superpowers 5-step discipline is encoded as instructions inside `AGENTS.md`. `AGENTS.md` is Codex's live entry file; `CLAUDE.md` is the Claude Code mirror (also generated, but Codex does not read it).
 
 ## Core Paradigm
 
@@ -110,7 +110,7 @@ Environment score = E_yes / 4. 0/4 → STOP; 1–3/4 → WARNING; 4/4 → PASS.
 |:--|:--|:--|
 | S1 | Agent role declared | Each `AGENTS.md` starts with "You are a [Stack] [Role] Agent. Your scope: [...]" |
 | S2 | Cross-domain prohibition | Each agent states MUST NOT / "NEVER generate [opposite-domain] code" |
-| S3 | Discipline workflow | 5 steps present as instructions in `AGENTS.md`: brainstorm → writing-plans → executing-plans → code-review → verification. Driven by `/opsx:` commands, OpenSpec skills, or `openspec` CLI |
+| S3 | Discipline workflow | 5 steps present as instructions in `AGENTS.md`: brainstorm → writing-plans → executing-plans → code-review → verification. Driven by `$skill-name` (`$openspec-propose` / `$openspec-apply-change` / `$openspec-archive-change`) or `openspec` CLI |
 | S4 | Project rules | Universal conventions documented in root `AGENTS.md` and/or `openspec/specs/` (Codex has no `.claude/rules/` auto-load) |
 | S5 | Domain guidance | Stack-specific deep guidance lives in the per-stack `AGENTS.md`; global Codex skills may live in `~/.codex/skills/` |
 | S6 | Permissions configured | Codex sandbox/permission profile + `config.toml` `[projects.*]` trust set; dangerous ops gated by sandbox |
@@ -237,7 +237,7 @@ Project map + business context (1–3 sentences) + tech-stack table + developmen
 | Root `AGENTS.md` has agent rules | Root = nav hub; rules in per-stack `AGENTS.md` |
 | No dangerous-command gating | Gate `rm -rf`, `git push --force` via Codex sandbox/approval |
 | specs/ at root level | Move to `openspec/specs/` (unified entry) |
-| Assuming Codex has no slash commands | Codex has `/opsx:` commands (`~/.codex/prompts/`) + skills via `$skill-name`; CLI + natural language also work |
+| Using `/opsx:` slash commands in Codex | Invoke loop skills via `$skill-name` (`$openspec-apply-change`, `$openspec-propose`, `$openspec-archive-change`) or the `openspec` CLI |
 
 ## Verification Checklist
 
@@ -255,14 +255,18 @@ Project map + business context (1–3 sentences) + tech-stack table + developmen
 
 ## OpenSpec ⇄ Discipline Loop (Codex)
 
-OpenSpec ships Codex-native drivers: `/opsx:` slash commands (from `~/.codex/prompts/`) and the `openspec` CLI. Drive the loop with either + `AGENTS.md` discipline:
+OpenSpec ships Codex-native drivers: `.codex/skills/openspec-*` skills (invoked via `$`) and the `openspec` CLI. Drive the loop with `$openspec-propose` / `$openspec-apply-change` / `$openspec-archive-change` or the CLI, plus `AGENTS.md` discipline:
 
 ```
 propose:  openspec new change <name>  →  fill proposal.md + spec.md (WHEN/THEN)
                                      (AGENTS.md tells AI to brainstorm/clarify first)
+design:   (UI/page work only — before apply) build an HTML prototype first. Two paths:
+          ① code-first: write HTML/CSS (or React+Tailwind/shadcn) directly → render in `browser` → `screenshot` self-check (fastest for simple pages/prototypes)
+          ② `frontend-app-builder` skill: Codex as senior designer → Image Gen visual concept → user confirms → faithful code impl → `browser` + `view_image` compare to 10/10 (no Figma)
+          Main stack: `build-web-apps` (`frontend-app-builder` + `shadcn-best-practices`) + `browser` + `screenshot`; default HTML/CSS for static/single-file, React+Vite only for complex apps
 apply:    implement tasks.md via TDD (red→green→refactor); per-task build check
 verify:   L1 build + L2 `openspec validate <name>` + L3 tests  →  write verify.md
 archive:  check verify.md (overall: PASS)  →  `openspec archive <name>`
 ```
 
-This is the "loop" in Loop Engineering: propose → plan → execute → review → verify → archive. The Superpowers discipline is not a separate installable skill here — it is the workflow encoded in `AGENTS.md` that the AI follows each cycle.
+This is the "loop" in Loop Engineering: propose → plan → design(UI) → execute → review → verify → archive. The Superpowers discipline is not a separate installable skill here — it is the workflow encoded in `AGENTS.md` that the AI follows each cycle.
