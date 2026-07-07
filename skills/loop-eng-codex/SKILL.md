@@ -1,13 +1,13 @@
 ---
 name: loop-eng-codex
-description: Loop Engineering (Codex edition) — scaffold, audit, and restructure an AI-collaboration project against the OpenSpec + Superpowers + Harness (LoopEng) paradigm, adapted for Codex. AGENTS.md is the live entry file; the propose→verify→archive loop is driven by the openspec CLI + natural language (no slash commands). Three modes — scaffold (generate a complete framework via scaffold.sh), audit (32-check maturity scoring), restructure (split a monolithic AGENTS.md/CLAUDE.md into per-stack agents + optimize). Use when the user asks to "set up loop engineering", "scaffold a LoopEng project", "audit project structure", "split AGENTS.md", or "optimize AI collaboration structure" in Codex.
+description: Loop Engineering (Codex edition) — scaffold, audit, and restructure an AI-collaboration project against the OpenSpec + Superpowers + Harness (LoopEng) paradigm, adapted for Codex. AGENTS.md is the live entry file; the propose→verify→archive loop is driven by `/opsx:` slash commands + the `openspec` CLI; skills are invoked via `$skill-name` (e.g. `$loop-eng-codex`). Three modes — scaffold (generate a complete framework via scaffold.sh), audit (32-check maturity scoring), restructure (split a monolithic AGENTS.md/CLAUDE.md into per-stack agents + optimize). Use when the user asks to "set up loop engineering", "scaffold a LoopEng project", "audit project structure", "split AGENTS.md", or "optimize AI collaboration structure" in Codex.
 ---
 
 # Loop Engineering — Scaffold · Audit · Restructure (Codex Edition)
 
 **OpenSpec defines direction (WHAT), Superpowers enforces discipline (HOW), Harness orchestrates collaboration (WHO).**
 
-> **Codex edition.** Codex has no `/opsx:` slash commands and no `.claude/skills/` Superpowers skills. The discipline is encoded as instructions inside `AGENTS.md`, and the propose → verify → archive loop is driven by the `openspec` CLI + natural language. `AGENTS.md` is Codex's live entry file; `CLAUDE.md` is the Claude Code mirror (also generated, but Codex does not read it).
+> **Codex edition.** `openspec init --tools codex` generates Codex-native drivers: global `~/.codex/prompts/opsx-*.md` slash commands (`/opsx:propose`, `/opsx:apply`, `/opsx:archive`, `/opsx:explore`, `/opsx:sync`) and project-local `.codex/skills/openspec-*` skills. The propose → verify → archive loop is driven by `/opsx:` commands and/or the `openspec` CLI; Codex skills are invoked via `$skill-name` (e.g. `$loop-eng-codex`) or auto-triggered by their `description`. The Superpowers 5-step discipline is encoded as instructions inside `AGENTS.md`. `AGENTS.md` is Codex's live entry file; `CLAUDE.md` is the Claude Code mirror (also generated, but Codex does not read it).
 
 ## Core Paradigm
 
@@ -48,7 +48,7 @@ The generator ships with four subcommands (run directly, or ask the AI to run th
 
 `check` prints PASS / PARTIAL / FAIL per check plus a maturity score (an automatable subset of the 32; use audit mode for the full set). It also auto-measures **O7** — CJK char ratio in auto-loaded files, threshold via the `CJK_THRESHOLD` env var (default 10). For per-file token counts and CJK breakdown, run `scaffold.sh tokens`. See `USAGE-PLAYBOOK-CODEX.md` for dialogue-style Codex usage.
 
-> ⚠️ `check` (in scaffold.sh) inspects `.claude/`-based structures (its E3/E4/S4/S5/S6/H9 lines) that are Claude-Code-specific. In a Codex-only project those script lines will report PARTIAL/FAIL by default — treat them as N/A and use the semantic audit criteria below (this SKILL.md) for the Codex-equivalent verdict.
+> `check` (in scaffold.sh) is Codex-aware: its E3/E4/S4/S5/S6/S8/H1/H5/H9 lines probe `AGENTS.md` (Codex entry) and fall back to `.claude/` structures only when Claude Code is enabled (`--tools codex,claude`). In a Codex-only project they score against `AGENTS.md`, not `.claude/`. For the full 32-check semantic audit, use the criteria below.
 
 ---
 
@@ -87,7 +87,7 @@ Generate a complete Loop Engineering framework from scratch.
 
 Environment score = E_yes / 4. 0/4 → STOP; 1–3/4 → WARNING; 4/4 → PASS.
 
-> Note: the `scaffold.sh check` script still probes `.claude/commands/opsx:*` for its E3/E4 (Claude constructs). For a Codex verdict use the criteria above instead of the script's E3/E4 line.
+> Note: `scaffold.sh check` is Codex-aware — E3 probes root `AGENTS.md` and E4 probes the frontend `AGENTS.md` design guidance (Claude constructs are only checked when `--tools codex,claude`). Use the criteria above for the full semantic audit.
 
 ### Phase 1: 32 Checks
 
@@ -110,7 +110,7 @@ Environment score = E_yes / 4. 0/4 → STOP; 1–3/4 → WARNING; 4/4 → PASS.
 |:--|:--|:--|
 | S1 | Agent role declared | Each `AGENTS.md` starts with "You are a [Stack] [Role] Agent. Your scope: [...]" |
 | S2 | Cross-domain prohibition | Each agent states MUST NOT / "NEVER generate [opposite-domain] code" |
-| S3 | Discipline workflow | 5 steps present as instructions in `AGENTS.md`: brainstorm → writing-plans → executing-plans → code-review → verification. In Codex followed from context + driven by `openspec` CLI; no slash commands |
+| S3 | Discipline workflow | 5 steps present as instructions in `AGENTS.md`: brainstorm → writing-plans → executing-plans → code-review → verification. Driven by `/opsx:` commands, OpenSpec skills, or `openspec` CLI |
 | S4 | Project rules | Universal conventions documented in root `AGENTS.md` and/or `openspec/specs/` (Codex has no `.claude/rules/` auto-load) |
 | S5 | Domain guidance | Stack-specific deep guidance lives in the per-stack `AGENTS.md`; global Codex skills may live in `~/.codex/skills/` |
 | S6 | Permissions configured | Codex sandbox/permission profile + `config.toml` `[projects.*]` trust set; dangerous ops gated by sandbox |
@@ -237,7 +237,7 @@ Project map + business context (1–3 sentences) + tech-stack table + developmen
 | Root `AGENTS.md` has agent rules | Root = nav hub; rules in per-stack `AGENTS.md` |
 | No dangerous-command gating | Gate `rm -rf`, `git push --force` via Codex sandbox/approval |
 | specs/ at root level | Move to `openspec/specs/` (unified entry) |
-| Expecting `/opsx:` slash commands | Use `openspec` CLI + natural language instead |
+| Assuming Codex has no slash commands | Codex has `/opsx:` commands (`~/.codex/prompts/`) + skills via `$skill-name`; CLI + natural language also work |
 
 ## Verification Checklist
 
@@ -255,7 +255,7 @@ Project map + business context (1–3 sentences) + tech-stack table + developmen
 
 ## OpenSpec ⇄ Discipline Loop (Codex)
 
-Codex has no `/opsx:` slash commands. Drive the loop with the `openspec` CLI + `AGENTS.md` discipline:
+OpenSpec ships Codex-native drivers: `/opsx:` slash commands (from `~/.codex/prompts/`) and the `openspec` CLI. Drive the loop with either + `AGENTS.md` discipline:
 
 ```
 propose:  openspec new change <name>  →  fill proposal.md + spec.md (WHEN/THEN)

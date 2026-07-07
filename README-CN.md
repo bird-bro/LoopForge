@@ -47,10 +47,10 @@ cp -r skills/loop-eng-cc /path/to/project/.claude/skills/loop-eng-cc
 全局安装进 Codex 的 skills 目录,然后重启 Codex:
 
 ```bash
-cp -RL skills/loop-eng-codex ~/.codex/skills/loop-eng-codex
+cp -R skills/loop-eng-codex ~/.codex/skills/loop-eng-codex
 ```
 
-`-L` 把 `scaffold.sh` 符号链接解引用成实体文件(必须如此 —— 该链接指向 `../loop-eng-cc/scaffold.sh`,在 `~/.codex/skills/` 内并不存在)。重启后 skill 按 `description` 自动触发 —— Codex 没有斜杠命令。
+`scaffold.sh` 已是 skill 目录内的实体文件,普通拷贝即可。重启后 skill 按 `description` 自动触发,也可用 `$loop-eng-codex` 显式调用;`openspec init --tools codex` 还会为 Codex 生成 `/opsx:` 斜杠命令(`/opsx:propose`、`/opsx:apply`、`/opsx:archive`、`/opsx:explore`、`/opsx:sync`)。
 
 > 若你之前把旧 Claude 版拷进了 `~/.codex/skills/loop-eng`,先删掉以免两个 skill 抢同一意图:`rm -rf ~/.codex/skills/loop-eng`。
 
@@ -87,7 +87,7 @@ myapp/
 └── frontend-web/{CLAUDE,AGENTS}.md ← Frontend Agent(Claude Code / Codex)
 ```
 
-`CLAUDE.md` 与 `AGENTS.md` 总是一起生成(内容镜像),同一项目可在两种工具中使用。非破坏性:已存在的文件会被跳过,可安全重跑。
+`CLAUDE.md` 与 `AGENTS.md` 总是一起生成(内容镜像),同一项目可在两种工具中使用。`.claude/` 仅在 `--tools` 含 Claude 时生成(cc 版默认,或 `codex,claude`);纯 `--tools codex` 运行不会生成。非破坏性:已存在的文件会被跳过,可安全重跑。
 
 ### 需另外安装的组件(按版本)
 

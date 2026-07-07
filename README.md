@@ -47,10 +47,10 @@ Trigger via the `/loop-eng-cc` slash command, or just describe the task in natur
 Install globally into Codex's skills directory, then restart Codex:
 
 ```bash
-cp -RL skills/loop-eng-codex ~/.codex/skills/loop-eng-codex
+cp -R skills/loop-eng-codex ~/.codex/skills/loop-eng-codex
 ```
 
-`-L` dereferences the `scaffold.sh` symlink into a real file (required — the symlink points at `../loop-eng-cc/scaffold.sh`, which does not exist inside `~/.codex/skills/`). After restart, the skill auto-triggers from its `description` — there is no slash command in Codex.
+`scaffold.sh` ships as a real file inside the skill directory, so a plain copy is enough. After restart, the skill auto-triggers from its `description` or can be invoked explicitly via `$loop-eng-codex`; `openspec init --tools codex` additionally generates Codex `/opsx:` slash commands (`/opsx:propose`, `/opsx:apply`, `/opsx:archive`, `/opsx:explore`, `/opsx:sync`).
 
 > If you previously copied the old Claude version into `~/.codex/skills/loop-eng`, remove it first to avoid both skills triggering on the same intent: `rm -rf ~/.codex/skills/loop-eng`.
 
@@ -87,7 +87,7 @@ myapp/
 └── frontend-web/{CLAUDE,AGENTS}.md ← Frontend Agent (Claude Code / Codex)
 ```
 
-`CLAUDE.md` and `AGENTS.md` are always generated together (mirrored), so the same project works in either tool. Non-destructive: existing files are skipped, safe to re-run.
+`CLAUDE.md` and `AGENTS.md` are always generated together (mirrored), so the same project works in either tool. `.claude/` is generated only when Claude Code is in `--tools` (the cc edition default, or `codex,claude`); a pure `--tools codex` run omits it. Non-destructive: existing files are skipped, safe to re-run.
 
 ### What you must install separately (per edition)
 
