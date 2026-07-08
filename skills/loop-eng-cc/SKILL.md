@@ -80,7 +80,7 @@ Generate a complete Loop Engineering framework from scratch.
 |:--|:--|:--|:--|
 | E1 | OpenSpec CLI installed | `openspec --version` returns valid version | `npm i -g @fission-ai/openspec@latest` |
 | E2 | Project initialized | `openspec/` exists with `specs/`, `changes/`, `archive/` | `openspec init` |
-| E3 | Slash commands generated | `.claude/commands/opsx:propose`, `opsx:apply`, `opsx:archive` exist | `openspec init` |
+| E3 | Slash commands generated | `.claude/commands/opsx:propose`, `opsx:apply`, `opsx:archive`, `opsx:verify` (loop-eng) exist | `openspec init` + scaffold |
 | E4 | frontend-design skill available | `.claude/skills/frontend-design/SKILL.md` exists (frontend only) | Install `frontend-design` skill |
 
 Environment score = E_yes / 4. 0/4 → STOP; 1–3/4 → WARNING; 4/4 → PASS.
@@ -106,7 +106,7 @@ Environment score = E_yes / 4. 0/4 → STOP; 1–3/4 → WARNING; 4/4 → PASS.
 |:--|:--|:--|
 | S1 | Agent role declared | Each CLAUDE.md starts with "You are a [Stack] [Role] Agent. Your scope: [...]" |
 | S2 | Cross-domain prohibition | Each agent states MUST NOT / "NEVER generate [opposite-domain] code" |
-| S3 | Superpowers workflow | 5 steps: brainstorm → writing-plans → executing-plans → code-review → verification. Auto-triggered by `/opsx:propose`, `/opsx:apply` — no slash command needed |
+| S3 | Superpowers workflow | 5 steps: brainstorm → writing-plans → executing-plans → code-review → verification. Auto-triggered by `/opsx:propose`, `/opsx:apply`, `/opsx:verify` — no slash command needed |
 | S4 | Project rules with globs | `.claude/rules/` auto-loaded by file-path matching |
 | S5 | Domain skills | `.claude/skills/` with YAML frontmatter; max 300 lines each |
 | S6 | Permissions configured | `.claude/settings.json` with allow/deny lists |
@@ -249,6 +249,29 @@ Project map + business context (1–3 sentences) + tech-stack table + developmen
 - [ ] Rules use globs; skills ≤ 300 lines each
 - [ ] Zero duplication across auto-loaded files
 - [ ] Each sub-CLAUDE.md < 3K tokens
+
+## Multi-Stack Coordination (Cross-Stack Features)
+
+When a feature spans >=2 stacks (e.g. frontend + backend in separate repos), a single-stack `spec-driven` change is insufficient: the agent correctly excludes the other stack via the cross-domain ban, but the "declared dependency" then has no home and is silently lost (nobody creates the sibling change). OpenSpec 1.4.1 solves this natively — scaffold.sh now auto-sets it up for >=2 stacks:
+
+- **`openspec workspace setup --link`** — registers the independent repos as coordinated areas.
+- **`openspec context-store setup`** — creates the home for initiatives.
+- **`openspec initiative create`** — the **parent**: durable cross-repo intent (requirements / design / decisions / tasks). This is the "sub-process" parent tracking the whole feature.
+- **`openspec new change <name> --initiative <id>`** — each repo's **child** change, linked to the parent (visible in `openspec status --change`).
+
+Stable pattern (CLI-driven; works in Codex and Claude Code):
+```
+1. (once) scaffold created <project>-store + workspace <project>
+2. Parent : openspec initiative create <feature> --store <project>-store --title "..."
+3. Per stack (parallel), each linked to the parent:
+     cd <stack-dir> && openspec new change <name> --initiative <feature> --store <project>-store
+4. Implement each in its own repo (cross-domain ban unchanged; frontend mocks first).
+   Cross-stack handoffs/sequencing live in the initiative's design.md / decisions.md.
+5. Gate: feature done = ALL linked changes verify PASS (openspec/verify.config.yaml) -> archive each.
+   Coordinator session: openspec workspace open --agent <codex-cli|claude> (neutral ground, no domain code).
+```
+
+> `--schema workspace-planning --areas ...` (a single cross-area change) is a **beta** alternative; the initiative + repo-local-change pattern above is the stable recommendation.
 
 ## OpenSpec ⇄ Superpowers Trigger
 

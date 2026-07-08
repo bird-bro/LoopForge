@@ -8,7 +8,7 @@
 
 ## 概述
 
-基于工业级三层范式(**OpenSpec + Superpowers + Harness**,即 OSH / 循环工程)的 AI 协作优化 Skill。两个并列版本共享同一个生成器(`scaffold.sh` —— 所有文件模板的单一来源):
+基于工业级三层范式(**OpenSpec + Superpowers + Harness**,即 OSH / 循环工程)的 AI 协作优化 Skill。两个并列版本,各有独立的 `scaffold.sh`(CC 版创建 `.claude/`;Codex 版创建 `.codex/`):
 
 | 版本 | Skill | AI 工具 | 活入口文件 | 纪律(HOW) | Loop 驱动方式 |
 |:--|:--|:--|:--|:--|:--|
@@ -23,7 +23,7 @@
 | **audit(审计)** | 32 项检查的成熟度评分(E1–E4、O1–O8、S1–S9、H1–H11) |
 | **restructure(重构)** | 将单体 `CLAUDE.md` / `AGENTS.md` 拆分为按技术栈分离的 Agent + 优化 |
 
-> v2:原 `loop-guard` + `split-help` 两个 skill 已合并为 `loop-eng-cc`(Claude Code 版);`loop-eng-codex` 为 Codex 版。文件模板统一收进 `scaffold.sh`(单一来源),SKILL.md 不再重复模板。
+> v2:原 `loop-guard` + `split-help` 两个 skill 已合并为 `loop-eng-cc`(Claude Code 版);`loop-eng-codex` 为 Codex 版。文件模板收进各自版本的 `scaffold.sh`,SKILL.md 不再重复模板。
 
 **核心理念:**
 - **OpenSpec** 定义方向(WHAT)
@@ -56,13 +56,13 @@ cp -R skills/loop-eng-codex ~/.codex/skills/loop-eng-codex
 
 ## 脚手架生成新项目
 
-两个版本用同一个 `scaffold.sh`,只是 `--tools` 不同:
+每个版本有自己的 `scaffold.sh`。CC 版创建 `.claude/`;Codex 版创建 `.codex/`。两者都生成 `CLAUDE.md` + `AGENTS.md` 镜像:
 
 ```bash
-# Claude Code(默认 --tools claude)
+# Claude Code(创建 .claude/)
 ./skills/loop-eng-cc/scaffold.sh myapp
 
-# Codex(--tools codex → openspec init 生成 Codex 风格文件)
+# Codex(创建 .codex/)
 ./skills/loop-eng-codex/scaffold.sh myapp --tools codex
 
 # 三栈(web + mobile)
@@ -72,7 +72,7 @@ cp -R skills/loop-eng-codex ~/.codex/skills/loop-eng-codex
 ./skills/loop-eng-cc/scaffold.sh myapp --dir ./projects/myapp --no-init
 ```
 
-选项:`--stacks`、`--dir`、`--backend-dir`、`--frontend-dir`、`--mobile-dir`、`--tools`(默认 `claude`;Codex 用 `codex`,双工具用 `codex,claude`)、`--no-init`。
+选项:`--stacks`、`--dir`、`--backend-dir`、`--frontend-dir`、`--mobile-dir`、`--tools`(CC 版默认 `claude`,Codex 版默认 `codex`;仅影响 `openspec init`)、`--no-init`。
 
 ### `scaffold.sh` 生成内容
 
@@ -81,13 +81,13 @@ myapp/
 ├── CLAUDE.md                 ← 导航中心(≤120 行)—— Claude Code 入口
 ├── AGENTS.md                 ← Codex 导航中心(与 CLAUDE.md 镜像)
 ├── openspec/                 ← WHAT:README、project.md、specs/{api,data,errors}、changes/_template、archive
-├── .claude/                  ← HOW:settings.json(权限+钩子)、rules/、agents/{reviewer,coordinator}
-│   └── (commands/ 与 openspec-* skill 由 `openspec init` 生成)
+├── .claude/  (CC 版)         ← HOW:settings.json(权限+钩子)、rules/、agents/{reviewer,coordinator}
+├── .codex/   (Codex 版)      ← HOW:skills/openspec-*(propose/apply/verify/archive + trigger 注入)
 ├── backend/{CLAUDE,AGENTS}.md   ← Backend Agent(Claude Code / Codex)
 └── frontend-web/{CLAUDE,AGENTS}.md ← Frontend Agent(Claude Code / Codex)
 ```
 
-`CLAUDE.md` 与 `AGENTS.md` 总是一起生成(内容镜像),同一项目可在两种工具中使用。`.claude/` 仅在 `--tools` 含 Claude 时生成(cc 版默认,或 `codex,claude`);纯 `--tools codex` 运行不会生成。非破坏性:已存在的文件会被跳过,可安全重跑。
+`CLAUDE.md` 与 `AGENTS.md` 总是一起生成(内容镜像),同一项目可在两种工具中使用。CC 版创建 `.claude/`;Codex 版创建 `.codex/` -- 各自只创建自己工具的目录,不交叉创建。非破坏性:已存在的文件会被跳过,可安全重跑。
 
 ### 需另外安装的组件(按版本)
 
@@ -103,7 +103,7 @@ myapp/
 
 触发 skill(如"审计我的项目结构")。它会执行 Phase 0(环境 E1–E4)+ Phase 1(32 项检查),输出诊断表、成熟度等级、Top 问题与行动计划。
 
-> Codex 注意:`scaffold.sh check` 的 E3/E4/S4/S5/S6/H9 行检查的是 `.claude/` 结构,属 Claude Code 专有,纯 Codex 项目会报 PARTIAL/FAIL。当作 N/A,改用 `skills/loop-eng-codex/SKILL.md` 里的语义标准判定。
+> Codex 注意:`scaffold.sh check` 是双源的 -- 先查 `AGENTS.md`,再查 `.claude/` 作为回退。纯 Codex 项目(无 `.claude/`)通过 `AGENTS.md` 通过 E3/E4/S4/S5/S6/S8/H9,不会误报 PARTIAL/FAIL。
 
 ### 成熟度评分
 

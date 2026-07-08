@@ -116,7 +116,7 @@ autoloaded_md() {
     [[ -f "${d}CLAUDE.md" ]] && printf '%s\n' "${d}CLAUDE.md"
     [[ -f "${d}AGENTS.md" ]] && printf '%s\n' "${d}AGENTS.md"
   done
-  find .claude/rules -name '*.md' 2>/dev/null
+  find .claude/rules -name '*.md' 2>/dev/null || true
 }
 
 subst() { sed -e "s/@@PROJECT_NAME@@/$PROJECT_NAME/g" \
@@ -149,17 +149,12 @@ generate_scaffold() {
   # openspec init ships 5 commands (propose/apply/archive/sync/explore) but NOT /opsx:verify, and the
   # generated propose/apply/archive are plain CLI flows with no Superpowers trigger / verify gate.
   # Loop-eng layers these on so the documented loop (propose->apply->verify->archive) is real.
-  echo "==> Layering LoopEng runtime enhancements (/opsx:verify + Superpowers triggers)"
-  mkdir -p .claude/commands/opsx
-
-  cat <<'__LOOPENG_VERIFY_CMD__' | write_if_absent .claude/commands/opsx/verify.md
----
-name: "OPSX: Verify"
-description: Three-layer verification (L1 build / L2 spec alignment / L3 tests) for a change — writes verify.md as the archive credential
-category: Workflow
-tags: [workflow, verification, experimental]
----
-
+  echo "==> Layering LoopEng runtime enhancements (verify config + report template; Claude commands + Codex skills)"
+  # Capture verify body once — shared between Claude slash command and Codex skill.
+  # openspec init (v1.4.1) generates propose/apply/archive/explore/sync only — NO verify
+  # command/skill in any --tools mode. Loop-eng creates it for both Claude and Codex.
+  _LOOP_VERIFY_BODY=$(mktemp)
+  cat > "$_LOOP_VERIFY_BODY" <<'__LOOPENG_VERIFY_BODY__'
 Three-layer verification for an OpenSpec change. Confirms the implementation actually satisfies the spec's WHEN/THEN scenarios, then writes a `verify.md` credential into the change directory that `/opsx:archive` checks before archiving.
 
 **The three layers**
@@ -336,7 +331,22 @@ Three-layer verification for an OpenSpec change. Confirms the implementation act
 **Fluid Workflow Integration**
 - Re-runnable any number of times; each run overwrites `verify.md`.
 - After a `/opsx:apply` fix, re-run `/opsx:verify` to refresh the credential before archiving.
-__LOOPENG_VERIFY_CMD__
+__LOOPENG_VERIFY_BODY__
+
+  mkdir -p .claude/commands/opsx
+  { cat <<'__FM_CLAUDE__'
+---
+name: "OPSX: Verify"
+description: Three-layer verification (L1 build / L2 spec alignment / L3 tests) for a change — writes verify.md as the archive credential
+category: Workflow
+tags: [workflow, verification, experimental]
+---
+
+__FM_CLAUDE__
+    cat "$_LOOP_VERIFY_BODY"
+  } | write_if_absent .claude/commands/opsx/verify.md
+
+  rm -f "$_LOOP_VERIFY_BODY"
 
   cat <<'__LOOPENG_VERIFY_CFG__' | write_if_absent openspec/verify.config.yaml
 # OpenSpec verify configuration
@@ -570,6 +580,12 @@ EOF
 ## What
 [Summary of the change]
 
+## Affected Stacks
+- [stack names; or "single-stack: <name>"]
+
+## Depends-On
+- [linked change ids or initiative id; or "none — standalone"]
+
 ## Scope
 - In scope: [list]
 - Out of scope: [list]
@@ -615,7 +631,7 @@ Start from `_template/`. On completion, move the directory to `../archive/` via 
 EOF
   touch openspec/archive/.gitkeep
 
-  # ---------- 2. .claude/  (HOW — discipline) ----------
+  # ---------- 2. .claude/  (HOW - discipline) ----------
   echo "==> Creating .claude/ (HOW)"
   mkdir -p .claude/rules .claude/skills .claude/agents .claude/commands
 
@@ -799,6 +815,30 @@ EOF
   if has frontend;        then mkdir -p "$FRONTEND_DIR"; gen_agent frontend        "$FRONTEND_DIR" "$(label_for frontend)";       touch "$FRONTEND_DIR/.gitkeep"; fi
   if has frontend-mobile; then mkdir -p "$MOBILE_DIR";   gen_agent frontend-mobile "$MOBILE_DIR"   "$(label_for frontend-mobile)"; touch "$MOBILE_DIR/.gitkeep"; fi
 
+  # ---------- 3b. Multi-stack coordination layer (workspace + context-store) ----------
+  # For >=2 stacks, register a coordination workspace + context-store so cross-stack
+  # features are tracked by an initiative (parent) linking per-repo changes (children).
+  # Without this, a cross-stack feature's "declared dependency" has no home and is lost.
+  if [[ $RUN_INIT -eq 1 ]] && command -v openspec >/dev/null 2>&1; then
+    _nstacks=$(awk -F, '{print NF}' <<<"$STACKS")
+    if [[ $_nstacks -ge 2 ]]; then
+      echo "==> Multi-stack detected ($_nstacks stacks): setting up coordination layer"
+      _cs="$PROJECT_NAME-store"
+      openspec context-store setup "$_cs" >/dev/null 2>&1 \
+        || echo "  warn: context-store setup failed (maybe exists); manual: openspec context-store setup $_cs"
+      _links=""
+      for _s in $(echo "$STACKS" | tr ',' ' '); do
+        _links="$_links --link ${_s}=./$(dir_for "$_s")"
+      done
+      # shellcheck disable=SC2086
+      openspec workspace setup --name "$PROJECT_NAME" $_links --tools "$TOOLS" --no-interactive >/dev/null 2>&1 \
+        || echo "  warn: workspace setup failed (maybe exists); manual: openspec workspace setup --name $PROJECT_NAME $_links --tools $TOOLS"
+      echo "    context-store: $_cs  (initiatives = durable cross-repo parent live here)"
+      echo "    workspace:     $PROJECT_NAME  (stacks linked as coordinated areas)"
+      echo "    cross-stack flow: see AGENTS.md \"Cross-Stack Feature\""
+    fi
+  fi
+
   # ---------- 4. Root CLAUDE.md (nav hub, <=120 lines) ----------
   echo "==> Creating root CLAUDE.md (nav hub)"
   {
@@ -829,6 +869,11 @@ EOF
     if has frontend;        then echo "| Frontend (web) | [fill] |"; fi
     if has frontend-mobile; then echo "| Frontend (mobile) | [fill] |"; fi
     echo ""
+    echo "## Conventions"
+    echo "- File names: kebab-case (`user-service.ts`)"
+    echo "- Never modify existing public methods - use overloading"
+    echo "- Auto-loaded files English only (Chinese notes in `docs/GUIDE.zh.md`)"
+    echo ""
     echo "## Development Workflow"
     echo "### New Feature"
      echo "1. Write spec: \`/opsx:propose <change>\` (auto-triggers Superpowers brainstorm)"
@@ -840,6 +885,16 @@ EOF
       echo "2. Agent: \`cd <stack-dir>\` → launch AI (claude/codex) → implement to spec (TDD)"
      echo "3. Verify against WHEN/THEN; \`/opsx:archive\` when done"
     fi
+    if has backend && (has frontend || has frontend-mobile); then
+      echo ""
+      echo "### Cross-Stack Feature (>=2 stacks — one initiative parent tracks all per-stack changes)"
+      echo "A cross-stack \"declared dependency\" with no parent is lost. Stable pattern:"
+      echo "1. Parent: \`openspec initiative create <feature> --store @@PROJECT_NAME@@-store --title \"...\"\`"
+      echo "2. Per stack (parallel): \`cd <stack-dir> && openspec new change <name> --initiative <feature> --store @@PROJECT_NAME@@-store\`"
+      echo "3. Implement each in its own repo (cross-domain ban unchanged; frontend mocks first); coordinate via initiative \`design.md\`/\`decisions.md\`"
+      echo "4. Gate: feature done = ALL linked changes verify PASS (\`openspec/verify.config.yaml\`) -> archive each"
+      echo "   Single-stack: skip initiative; plain \`openspec new change\`. Coordinator: \`openspec workspace open --agent <codex-cli|claude>\`."
+    fi
     echo ""
     echo "### AI Coding Rules"
     echo "- Spec first — read \`openspec/specs/\` before writing code"
@@ -847,6 +902,7 @@ EOF
     echo "- TDD — Superpowers auto-enforces"
     echo "- No cross-domain — each agent writes only its own stack"
     echo "- Never modify existing methods — use overloading"
+    echo "- Dangerous ops (`rm -rf`, `git push --force`, `git reset --hard`) gated by sandbox/approval or .claude/settings.json deny list"
     echo ""
     echo "### Session Commands"
     echo "\`/resume\` · \`/branch\` · \`/rewind\`"
@@ -896,6 +952,7 @@ EOF
 | 各技术栈编码规范 | `<stack>/CLAUDE.md` | 英文 |
 | 命名等通用规则 | `.claude/rules/*.md` | 英文 |
 | 斜杠命令用法 | `.claude/commands/opsx/` | 英文 |
+| 验证 skill/命令 | Claude: `.claude/commands/opsx/verify.md`; Codex: `.codex/skills/openspec-verify/` | 英文 |
 | 构建测试配置（验证用） | `openspec/verify.config.yaml` | 英文 |
 | 本人类导览 | `docs/GUIDE.zh.md`（本文件） | 中文 |
 
@@ -904,6 +961,14 @@ EOF
 2. 实施 → `/opsx:apply <名字>`，AI 按 TDD 逐任务实现，每任务后跑构建检查
 3. 验证 → `/opsx:verify <名字>`，跑三层（构建/规格对齐/测试），生成 `verify.md`
 4. 归档 → `/opsx:archive <名字>`，检查 `verify.md` 门禁后归档
+
+## 跨栈功能协调（前后端联动）
+当一个功能跨多个栈（如前端+后端分属独立仓库），单栈 change 不够——前端 agent 按跨域禁令正确排除后端，但"声明的后端依赖"没有归属会被静默丢失（没人创建对应的兄弟 change）。OpenSpec 1.4.1 原生解决，脚手架已为 ≥2 栈自动建好：
+- **context-store**（`<项目>-store`）+ **workspace**（各仓库注册为协调区域）已自动建立
+- **父级 initiative**：`openspec initiative create <功能> --store <项目>-store` —— 跨仓库持久意图（需求/设计/决策/任务），即"子流程"的父
+- **子级 change**：各仓库 `openspec new change <名> --initiative <功能> --store <项目>-store`，挂到父级（`openspec status` 可见链接）
+- **完成门禁**：所有挂载的 change 都 verify PASS → 功能才算完 → 各自归档
+- **协调会话**：`openspec workspace open --agent <codex-cli|claude>`（中立地，不写领域代码，只做跨栈 verify 收口）
 
 ## 约定速记
 - 先 spec 后代码：没有 spec 不写代码
@@ -926,9 +991,8 @@ __GUIDE_ZH__
   echo "Next steps:"
   echo "  1. cd $TARGET_DIR"
   if [[ $RUN_INIT -eq 0 ]]; then echo "  2. openspec init   (generate slash commands + base skills)"; fi
-  echo "  3. Install on-demand skills not generated here:"
-  echo "     - Superpowers set (brainstorm / writing-plans / executing-plans / code-review / verification)"
-  if has frontend || has frontend-mobile; then echo "     - frontend-design skill"; fi
+  echo "  3. Install on-demand Claude skills: Superpowers set (brainstorm / writing-plans / executing-plans / code-review / verification)"
+  if has frontend || has frontend-mobile; then echo "     + frontend-design skill"; fi
   echo "  4. Fill [BRACKETS] placeholders in openspec/project.md, openspec/specs/*, and per-stack CLAUDE.md/AGENTS.md"
   echo "  5. Edit openspec/verify.config.yaml — set each stack build/test commands for /opsx:verify (L1 build / L3 test)"
   echo "  6. Run the loop-eng audit (32 checks) to verify maturity"
@@ -1046,29 +1110,52 @@ PY
   fi
 
   # E3 / S6 / S4 / S8 / S5
-  [[ -d .claude/commands/opsx ]] && report PASS "E3 .claude/commands/opsx/ (slash commands)" || report FAIL "E3 .claude/commands/opsx/ (run: openspec init)"
-  [[ -f .claude/commands/opsx/verify.md ]] && report PASS "E3+ /opsx:verify command (loop-eng enhancement)" || report PARTIAL "E3+ /opsx:verify missing (re-run scaffold.sh to embed)"
+  if [[ -d .claude/commands/opsx ]]; then
+    report PASS "E3 .claude/commands/opsx/ (Claude slash commands)"
+  elif [[ -d .codex/skills/openspec-propose ]]; then
+    report PASS "E3 .codex/skills/openspec-*/ (Codex skills)"
+  else
+    report FAIL "E3 no opsx commands/skills found (run: openspec init)"
+  fi
+  # E3+ — verify skill/command (loop-eng enhancement: openspec init ships none)
+  if [[ -f .claude/commands/opsx/verify.md ]]; then
+    report PASS "E3+ verify command (.claude/commands/opsx/verify.md)"
+  elif [[ -f .codex/skills/openspec-verify/SKILL.md ]]; then
+    report PASS "E3+ verify skill (.codex/skills/openspec-verify/)"
+  else
+    report PARTIAL "E3+ verify skill missing (re-run scaffold.sh to create)"
+  fi
+  local _s6=0 _s6note=""
+  { [[ -f AGENTS.md ]] && grep -qiE 'sandbox|approval|permission' AGENTS.md; } && { _s6=1; _s6note="AGENTS.md sandbox/approval"; } || true
   if [[ -f .claude/settings.json ]]; then
-    if ! command -v python3 >/dev/null 2>&1; then report PARTIAL "S6 settings.json (no python3 to validate JSON)"
-    elif json_ok .claude/settings.json; then report PASS "S6 .claude/settings.json (valid JSON)"; else report FAIL "S6 .claude/settings.json (invalid JSON)"; fi
-  else report FAIL "S6 .claude/settings.json (missing)"; fi
-  local rules=0 sp=0
+    if ! command -v python3 >/dev/null 2>&1; then _s6note="${_s6note:+$_s6note + }settings.json (no python3)"
+    elif json_ok .claude/settings.json; then _s6=1; _s6note="${_s6note:+$_s6note + }.claude/settings.json"
+    else _s6note="settings.json (invalid JSON)"; fi
+  fi
+  if [[ $_s6 -eq 1 ]]; then report PASS "S6 permissions ($_s6note)"
+  else report PARTIAL "S6 permissions (note sandbox/approval in AGENTS.md, or add .claude/settings.json for Claude)"; fi
+  local _s4=0 rules=0
+  { [[ -f AGENTS.md ]] && grep -qiE '## Conventions|## Coding Rules|naming|kebab-case' AGENTS.md; } && _s4=1 || true
   while IFS= read -r _; do rules=$((rules+1)); done < <(find .claude/rules -name '*.md' 2>/dev/null)
-  [[ $rules -gt 0 ]] && report PASS "S4 .claude/rules/ ($rules rule(s))" || report PARTIAL "S4 .claude/rules/ (empty)"
- if [[ -f .claude/agents/reviewer.md && -f .claude/agents/coordinator.md ]]; then report PASS "S8 agents reviewer+coordinator"; else report PARTIAL "S8 agents (reviewer/coordinator)"; fi
+  [[ $rules -gt 0 ]] && _s4=1 || true
+  if [[ $_s4 -eq 1 ]]; then report PASS "S4 universal conventions (AGENTS.md; .claude/rules/: $rules)"
+  else report PARTIAL "S4 conventions (add a Conventions section to AGENTS.md or .claude/rules/)"; fi
+  local _s8=0
+  { [[ -f AGENTS.md ]] && grep -qiE 'reviewer|coordinator' AGENTS.md; } && _s8=1 || true
+  [[ -f .claude/agents/reviewer.md && -f .claude/agents/coordinator.md ]] && _s8=1 || true
+  [[ $_s8 -eq 1 ]] && report PASS "S8 reviewer+coordinator roles (AGENTS.md / .claude/agents/)" || report PARTIAL "S8 roles (add Reviewer+Coordinator to AGENTS.md or .claude/agents/)"
   # S5 — domain skills. Detect the Superpowers discipline set by skill name so a
   # project that has it installed scores PASS; without it, prompt to install.
-  local _s5_total=0 _s5_super=0 _s5d _s5n
+  local _s5_ag=0 _s5_cl=0 _s5_super=0 _s5d _s5n
+  while IFS= read -r _; do _s5_ag=$((_s5_ag+1)); done < <(find . -mindepth 2 -maxdepth 2 -name AGENTS.md -not -path './openspec/*' -not -path './.claude/*' 2>/dev/null)
   while IFS= read -r _s5d; do
-    _s5_total=$((_s5_total+1))
-    _s5n="$(basename "$_s5d")"
+    _s5_cl=$((_s5_cl+1)); _s5n="$(basename "$_s5d")"
     case "$_s5n" in
       brainstorming|writing-plans|executing-plans|requesting-code-review|receiving-code-review|verification-before-completion|using-superpowers|test-driven-development|systematic-debugging|subagent-driven-development|dispatching-parallel-agents|using-git-worktrees|finishing-a-development-branch|writing-skills) _s5_super=$((_s5_super+1));;
     esac
   done < <(find .claude/skills -mindepth 1 -maxdepth 1 -type d ! -name 'openspec-*' 2>/dev/null)
-  if [[ $_s5_super -gt 0 ]]; then report PASS "S5 domain skills ($_s5_total; Superpowers: $_s5_super)";
-  elif [[ $_s5_total -gt 0 ]]; then report PARTIAL "S5 domain skills ($_s5_total; no Superpowers set - install brainstorming/writing-plans/executing-plans/requesting-code-review/verification-before-completion)";
-  else report PARTIAL "S5 no domain skills installed"; fi
+  if [[ $_s5_ag -gt 0 || $_s5_super -gt 0 ]]; then report PASS "S5 domain guidance (per-stack AGENTS.md: $_s5_ag${_s5_super:+; Superpowers: $_s5_super})"
+  else report PARTIAL "S5 domain guidance (add deep guidance to per-stack AGENTS.md${_s5_cl:+; or install Superpowers skills for Claude})"; fi
 
   # H1 / H5 / H2 / H9
   local ag=0
@@ -1080,7 +1167,10 @@ PY
     if [[ $lc -le 120 ]]; then report PASS "H5 root CLAUDE.md nav hub ($lc lines)"; else report PARTIAL "H5 root CLAUDE.md ($lc lines > 120; trim to nav hub)"; fi
   else report FAIL "H5 root CLAUDE.md (missing)"; fi
   if grep -rq 'openspec/specs' . --include='*.md' 2>/dev/null; then report PASS "H2 agents reference openspec/specs"; else report PARTIAL "H2 no openspec/specs references found"; fi
-  if [[ -f .claude/settings.json ]] && grep -q 'rm -rf' .claude/settings.json 2>/dev/null && grep -q 'push --force' .claude/settings.json 2>/dev/null; then report PASS "H9 dangerous commands denied"; else report PARTIAL "H9 dangerous-command deny list"; fi
+  local _h9=0
+  { [[ -f .claude/settings.json ]] && grep -q 'rm -rf' .claude/settings.json 2>/dev/null && grep -q 'push --force' .claude/settings.json 2>/dev/null; } && _h9=1 || true
+  { [[ -f AGENTS.md ]] && grep -qiE 'rm -rf|push --force|reset --hard|sandbox|approval' AGENTS.md; } && _h9=1 || true
+  [[ $_h9 -eq 1 ]] && report PASS "H9 dangerous commands gated (sandbox/approval or deny list)" || report PARTIAL "H9 dangerous-command gating (gate rm -rf / git push --force via sandbox or .claude/settings.json)"
 
   echo ""
   _score "$pass" "$partial" "$fail" "$total"

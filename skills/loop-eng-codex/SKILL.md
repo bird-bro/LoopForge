@@ -1,13 +1,13 @@
 ---
 name: loop-eng-codex
-description: Loop Engineering (Codex edition) — scaffold, audit, and restructure an AI-collaboration project against the OpenSpec + Superpowers + Harness (LoopEng) paradigm, adapted for Codex. AGENTS.md is the live entry file; the propose→verify→archive loop is driven by `$skill-name` invocation (`$openspec-propose` / `$openspec-apply-change` / `$openspec-archive-change`) + the `openspec` CLI; skills are invoked via `$skill-name` (e.g. `$loop-eng-codex`). Three modes — scaffold (generate a complete framework via scaffold.sh), audit (32-check maturity scoring), restructure (split a monolithic AGENTS.md/CLAUDE.md into per-stack agents + optimize). Use when the user asks to "set up loop engineering", "scaffold a LoopEng project", "audit project structure", "split AGENTS.md", or "optimize AI collaboration structure" in Codex.
+description: Loop Engineering (Codex edition) — scaffold, audit, and restructure an AI-collaboration project against the OpenSpec + Superpowers + Harness (LoopEng) paradigm, adapted for Codex. AGENTS.md is the live entry file; the propose→verify→archive loop is driven by `$skill-name` invocation (`$openspec-propose` / `$openspec-apply-change` / `$openspec-verify` / `$openspec-archive-change`) + the `openspec` CLI; skills are invoked via `$skill-name` (e.g. `$loop-eng-codex`). Three modes — scaffold (generate a complete framework via scaffold.sh), audit (32-check maturity scoring), restructure (split a monolithic AGENTS.md/CLAUDE.md into per-stack agents + optimize). Use when the user asks to "set up loop engineering", "scaffold a LoopEng project", "audit project structure", "split AGENTS.md", or "optimize AI collaboration structure" in Codex.
 ---
 
 # Loop Engineering — Scaffold · Audit · Restructure (Codex Edition)
 
 **OpenSpec defines direction (WHAT), Superpowers enforces discipline (HOW), Harness orchestrates collaboration (WHO).**
 
-> **Codex edition.** `openspec init --tools codex` generates project-local `.codex/skills/openspec-*` skills — `openspec-propose`, `openspec-apply-change`, `openspec-archive-change`, `openspec-explore`, `openspec-sync-specs` — invoked via `$skill-name`. Codex drives the propose → verify → archive loop via `$` skills + the `openspec` CLI + natural language. Skills also auto-trigger by their `description`. The Superpowers 5-step discipline is encoded as instructions inside `AGENTS.md`. `AGENTS.md` is Codex's live entry file; `CLAUDE.md` is the Claude Code mirror (also generated, but Codex does not read it).
+> **Codex edition.** `openspec init --tools codex` generates project-local `.codex/skills/openspec-*` skills — `openspec-propose`, `openspec-apply-change`, `openspec-archive-change`, `openspec-explore`, `openspec-sync-specs` — invoked via `$skill-name`. Loop-eng adds `openspec-verify` (three-layer verification: L1 build / L2 spec alignment / L3 tests) + injects verify triggers/gates into the apply/archive skills. Codex drives the propose → verify → archive loop via `$` skills + the `openspec` CLI + natural language. Skills also auto-trigger by their `description`. The Superpowers 5-step discipline is encoded as instructions inside `AGENTS.md`. `AGENTS.md` is Codex's live entry file; `CLAUDE.md` is the Claude Code mirror (also generated, but Codex does not read it).
 
 ## Core Paradigm
 
@@ -87,7 +87,7 @@ Generate a complete Loop Engineering framework from scratch.
 
 Environment score = E_yes / 4. 0/4 → STOP; 1–3/4 → WARNING; 4/4 → PASS.
 
-> Note: `scaffold.sh check` is Codex-aware — E3 probes root `AGENTS.md` and E4 probes the frontend `AGENTS.md` design guidance (Claude constructs are only checked when `--tools codex,claude`). Use the criteria above for the full semantic audit.
+> Note: `scaffold.sh check` is Codex-aware — E3 probes root `AGENTS.md` and E4 probes the frontend `AGENTS.md` design guidance (Claude constructs are only checked when `--tools codex,claude`). E3+ checks for the verify skill (`.codex/skills/openspec-verify/` or `.claude/commands/opsx/verify.md`) — created by loop-eng, not `openspec init`. Use the criteria above for the full semantic audit.
 
 ### Phase 1: 32 Checks
 
@@ -110,7 +110,7 @@ Environment score = E_yes / 4. 0/4 → STOP; 1–3/4 → WARNING; 4/4 → PASS.
 |:--|:--|:--|
 | S1 | Agent role declared | Each `AGENTS.md` starts with "You are a [Stack] [Role] Agent. Your scope: [...]" |
 | S2 | Cross-domain prohibition | Each agent states MUST NOT / "NEVER generate [opposite-domain] code" |
-| S3 | Discipline workflow | 5 steps present as instructions in `AGENTS.md`: brainstorm → writing-plans → executing-plans → code-review → verification. Driven by `$skill-name` (`$openspec-propose` / `$openspec-apply-change` / `$openspec-archive-change`) or `openspec` CLI |
+| S3 | Discipline workflow | 5 steps present as instructions in `AGENTS.md`: brainstorm → writing-plans → executing-plans → code-review → verification. Driven by `$skill-name` (`$openspec-propose` / `$openspec-apply-change` / `$openspec-verify` / `$openspec-archive-change`) or `openspec` CLI |
 | S4 | Project rules | Universal conventions documented in root `AGENTS.md` and/or `openspec/specs/` (Codex has no `.claude/rules/` auto-load) |
 | S5 | Domain guidance | Stack-specific deep guidance lives in the per-stack `AGENTS.md`; global Codex skills may live in `~/.codex/skills/` |
 | S6 | Permissions configured | Codex sandbox/permission profile + `config.toml` `[projects.*]` trust set; dangerous ops gated by sandbox |
@@ -253,9 +253,32 @@ Project map + business context (1–3 sentences) + tech-stack table + developmen
 - [ ] Each sub-`AGENTS.md` < 3K tokens
 - [ ] (Cross-tool) `CLAUDE.md` mirrors `AGENTS.md` and is in sync
 
+## Multi-Stack Coordination (Cross-Stack Features)
+
+When a feature spans >=2 stacks (e.g. frontend + backend in separate repos), a single-stack `spec-driven` change is insufficient: the agent correctly excludes the other stack via the cross-domain ban, but the "declared dependency" then has no home and is silently lost (nobody creates the sibling change). OpenSpec 1.4.1 solves this natively — scaffold.sh now auto-sets it up for >=2 stacks:
+
+- **`openspec workspace setup --link`** — registers the independent repos as coordinated areas.
+- **`openspec context-store setup`** — creates the home for initiatives.
+- **`openspec initiative create`** — the **parent**: durable cross-repo intent (requirements / design / decisions / tasks). This is the "sub-process" parent tracking the whole feature.
+- **`openspec new change <name> --initiative <id>`** — each repo's **child** change, linked to the parent (visible in `openspec status --change`).
+
+Stable pattern (CLI-driven; works in Codex and Claude Code):
+```
+1. (once) scaffold created <project>-store + workspace <project>
+2. Parent : openspec initiative create <feature> --store <project>-store --title "..."
+3. Per stack (parallel), each linked to the parent:
+     cd <stack-dir> && openspec new change <name> --initiative <feature> --store <project>-store
+4. Implement each in its own repo (cross-domain ban unchanged; frontend mocks first).
+   Cross-stack handoffs/sequencing live in the initiative's design.md / decisions.md.
+5. Gate: feature done = ALL linked changes verify PASS (openspec/verify.config.yaml) -> archive each.
+   Coordinator session: openspec workspace open --agent <codex-cli|claude> (neutral ground, no domain code).
+```
+
+> `--schema workspace-planning --areas ...` (a single cross-area change) is a **beta** alternative; the initiative + repo-local-change pattern above is the stable recommendation.
+
 ## OpenSpec ⇄ Discipline Loop (Codex)
 
-OpenSpec ships Codex-native drivers: `.codex/skills/openspec-*` skills (invoked via `$`) and the `openspec` CLI. Drive the loop with `$openspec-propose` / `$openspec-apply-change` / `$openspec-archive-change` or the CLI, plus `AGENTS.md` discipline:
+OpenSpec ships Codex-native drivers: `.codex/skills/openspec-*` skills (invoked via `$`) and the `openspec` CLI. Drive the loop with `$openspec-propose` / `$openspec-apply-change` / `$openspec-verify` / `$openspec-archive-change` or the CLI, plus `AGENTS.md` discipline:
 
 ```
 propose:  openspec new change <name>  →  fill proposal.md + spec.md (WHEN/THEN)

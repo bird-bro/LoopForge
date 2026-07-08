@@ -34,6 +34,8 @@
 ```
 自动跑 `openspec init` 并生成 `openspec/`、`.claude/`、`backend/CLAUDE.md`、`frontend-web/CLAUDE.md`、根 `CLAUDE.md`。然后 AI 列出待填占位符与需另装的组件(Superpowers 技能集 `brainstorming`/`writing-plans`/`executing-plans`/`requesting-code-review`/`verification-before-completion` 复制到 `.claude/skills/`、`frontend-design` skill)。scaffold 同时生成 `CLAUDE.md`(Claude Code)与 `AGENTS.md`(Codex)双入口镜像。
 
+> CC 版 scaffold **只创建 `.claude/`**(rules / skills / agents / settings + trigger 注入),不创建 `.codex/` 目录。两版 scaffold 各管各的工具目录,不交叉创建。
+
 > 只想看不落地:`./scaffold.sh list --stacks backend,frontend`
 
 ### 对话 2 · 填业务内容
@@ -112,6 +114,41 @@
 
 ---
 
+## 场景四:跨栈功能协调(前后端联动)
+
+当一个功能跨多个栈(如前端小程序 + 后端 Java,分属独立 git 仓库),单栈 change 不够:前端 agent 按跨域禁令正确排除后端,但"声明的后端依赖"没有归属,会被静默丢失(没人创建对应的兄弟 change)。scaffold.sh 对 ≥2 栈已自动建好协调层(context-store + workspace),用 OpenSpec 1.4.1 原生的 **initiative(父级)+ per-stack change(子级)** 模式解决。
+
+### 对话 · 跨栈功能
+
+**用户**:
+> 技师任务详情页:前端小程序(ops_wechat)要调后端(ops_sev)的新接口。前端先做,后端另开提案。
+
+**AI**:
+1. **建父级 initiative**(跨仓库持久意图,= "子流程"的父):
+   ```bash
+   openspec initiative create task-flow --store ops-store --title "技师任务详情/历史全链路"
+   ```
+2. **前端 change**(ops_wechat 仓库内,挂到父级):
+   ```bash
+   cd ops_wechat
+   openspec new change wechat-task-detail --initiative task-flow --store ops-store
+   # proposal.md "后端依赖"节声明所需接口(POST /api/wechat/task/detail 等)
+   # Scope Out: 后端接口实现(由 Backend Agent 另行提案)
+   ```
+3. **后端 change**(ops_sev 仓库内,兄弟提案):
+   ```bash
+   cd ops_sev
+   openspec new change sev-task-detail-api --initiative task-flow --store ops-store
+   # proposal.md 实现前端声明的接口
+   ```
+4. **各自实现**(跨域禁令不变;前端 mock 优先)→ 各自 `/opsx:verify` → 各自 `/opsx:archive`
+5. **完成门禁**:`openspec status` 可见两个 change 都挂载到同一 initiative;全部 verify PASS → 功能才算完
+
+> 协调会话(中立地,不写领域代码):`openspec workspace open --agent claude`
+> 跨栈的接口契约/设计决策放在 initiative 的 `design.md` / `decisions.md` 里,双方共享。
+
+---
+
 ## 速查:可直接复制的命令
 
 ```bash
@@ -120,6 +157,9 @@
 
 # 三栈(web + mobile)
 ./scaffold.sh <name> --stacks backend,frontend,frontend-mobile
+
+# 双工具(openspec init 生成 .claude/ + .codex/ 指令文件;LoopEng 增强只注入 .claude/)
+./scaffold.sh <name> --tools claude,codex
 
 # 预览不落地
 ./scaffold.sh list --stacks backend,frontend
@@ -132,9 +172,15 @@
 
 # 跳过 init(稍后手动 openspec init)
 ./scaffold.sh <name> --no-init
+
+# 日常 loop(斜杠命令;或用 openspec CLI 对应命令)
+/opsx:propose                        # 提案:brainstorm 澄清 → 写 proposal + spec
+/opsx:apply                          # 实现:按 tasks TDD
+/opsx:verify                         # 三层验证(L1 构建/L2 spec 对齐/L3 测试)→ 写 verify.md
+/opsx:archive                        # verify.md overall=PASS → 归档
 ```
 
-**让 AI 代劳**:直接说"用 loop-eng-cc 给 X 搭脚手架 / 审计 X / 把 X 的 CLAUDE.md 拆开",AI 会选对应模式或 CLI 执行。
+**让 AI 代劳**:直接说"用 loop-eng-cc 给 X 搭脚手架 / 审计 X / 把 X 的 CLAUDE.md 拆开 / 提一个 X 变更并走 loop",AI 会选对应模式或 CLI 执行。
 
 ## 成熟度评分参考
 

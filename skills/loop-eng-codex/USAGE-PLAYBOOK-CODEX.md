@@ -16,12 +16,17 @@
 |:--|:--|:--|
 | 触发 skill | `/loop-eng-cc` 斜杠命令 或 自然语言 | `$loop-eng-codex` 显式调用 或 按 `description` 自动触发 |
 | 入口文件 | `CLAUDE.md` | `AGENTS.md`(`CLAUDE.md` 是镜像,Codex 不读) |
-| 提案/应用/验证/归档 | `/opsx:propose` / `apply` / `verify` / `archive` 斜杠命令 | 用 `$openspec-propose` / `$openspec-apply-change` / `$openspec-archive-change`(`$` 技能)或 `openspec` CLI(verify 走 `openspec validate`+`verify.md`) |
+| 提案/应用/验证/归档 | `/opsx:propose` / `apply` / `verify` / `archive` 斜杠命令 | 用 `$openspec-propose` / `$openspec-apply-change` / `$openspec-verify` / `$openspec-archive-change`(`$` 技能)或 `openspec` CLI |
 | 纪律(Superpowers) | `.claude/skills/` 里五个技能,由斜杠命令自动触发 | 纪律写进 `AGENTS.md` 作为指令(不依赖插件),AI 按上下文遵循 |
 | 会话续接 | `/resume` `/branch` `/rewind` | Codex 自身 goal/plan + 自然对话续接 |
-| openspec init | `--tools claude`(默认) | `--tools codex`(或 `codex,claude` 双工具) |
+| openspec init | `--tools claude`(默认) | `--tools codex`(默认) |
+| 工具目录 | `.claude/`(rules / skills / agents / settings) | `.codex/`(skills / openspec-*) |
 
 > scaffold.sh **总会**同时生成 `CLAUDE.md` 与 `AGENTS.md`(内容镜像)。纯 Codex 项目里 `CLAUDE.md` 是死文件,可留着备用或删;编辑只动 `AGENTS.md`。
+>
+> Codex 版 scaffold **只创建 `.codex/`**(openspec 技能 + verify skill + trigger 注入),不创建 `.claude/` 目录。两版 scaffold 各管各的工具目录,不交叉创建。
+>
+> `openspec init` 不含 verify——loop-eng 脚手架额外创建 `$openspec-verify` 技能(三层验证)并注入到 apply/archive 的触发链,使闭环 `propose → apply → verify → archive` 自动衔接。
 
 ---
 
@@ -51,10 +56,10 @@
 ```bash
 ./scaffold.sh myapp --stacks backend,frontend --dir ./myapp --tools codex
 ```
-自动跑 `openspec init --tools codex` 并生成 `openspec/`、各栈 `AGENTS.md`(Codex 入口)+ `CLAUDE.md`(Claude 镜像)、根 `AGENTS.md` 导航中心。然后 AI 列出待填占位符与需另装的组件。
+自动跑 `openspec init --tools codex` 并生成 `openspec/`、`.codex/skills/`(openspec 技能 + verify skill + trigger 注入)、各栈 `AGENTS.md`(Codex 入口)+ `CLAUDE.md`(Claude 镜像)、根 `AGENTS.md` 导航中心。然后 AI 列出待填占位符与需另装的组件。
 
 > 只想看不落地:`./scaffold.sh list --stacks backend,frontend`
-> 双工具(同时用 Claude + Codex):`--tools codex,claude`
+> 双工具(同一项目同时用 Claude + Codex):`--tools codex,claude` 让 `openspec init` 生成两套指令文件,但本 scaffold 只往 `.codex/` 注入 LoopEng 增强(trigger / verify)。`.claude/` 的完整增强需另跑 CC 版 scaffold。
 
 ### 对话 2 · 填业务内容
 
@@ -89,7 +94,7 @@ Claude 版用 `/opsx:propose` 斜杠命令;**Codex 版用 `$openspec-propose`(`$
    ```
    填写 `proposal.md`、`spec.md`,写明 WHEN/THEN 场景(它们就是后面 verify 的 L2 用例)。
 2. **实现(apply)** —— 按 `tasks.md` 用 TDD(红→绿→重构)实现,前后端跨域隔离、mock 优先;每完成一个任务跑该栈构建命令做 L1 快检。
-3. **验证(verify)** —— 工具无关三层:
+3. **验证(verify)** —— 调 `$openspec-verify` 技能(或手动三层):
    - L1 构建:跑各栈 build 命令(配置在 `openspec/verify.config.yaml`)
    - L2 spec 对齐:`openspec validate add-book-borrow`
    - L3 测试:跑测试套件
@@ -146,14 +151,14 @@ Claude 版用 `/opsx:propose` 斜杠命令;**Codex 版用 `$openspec-propose`(`$
 
 ## 场景三:日常 Loop 循环(新 / 老通用)
 
-每个功能都走闭环。Codex 版用 `$` 技能(`$openspec-propose`/`$openspec-apply-change`/`$openspec-archive-change`)或 `openspec` CLI 驱动,纪律由 AGENTS.md 承载:
+每个功能都走闭环。Codex 版用 `$` 技能(`$openspec-propose`/`$openspec-apply-change`/`$openspec-verify`/`$openspec-archive-change`)或 `openspec` CLI 驱动,纪律由 AGENTS.md 承载:
 
 | 阶段 | 用户输入 | AI 做 |
 |:--|:--|:--|
 | 提案 | "提一个 X 变更" | 澄清需求 → `openspec new change <name>` → 填 proposal + spec(WHEN/THEN) |
 | 设计 | "页面要做成什么样" | (仅页面/UI 开发,apply 前)先做 HTML 原型,两条路:① 纯代码优先 — 直接写 HTML/CSS(或 React+Tailwind/shadcn)→ `browser` 渲染 → `screenshot` 自检(简单页/快速原型最快);② `frontend-app-builder` skill — Codex 当资深前端设计师 → Image Gen 出视觉概念稿 → 用户确认 → 忠实实现成代码 → `browser` + `view_image` 对比到 10/10 还原(全程不碰 Figma)。主力栈:`build-web-apps`(`frontend-app-builder` + `shadcn-best-practices`)+ `browser` + `screenshot`;静态/单文件默认 HTML/CSS,复杂 app 才上 React+Vite |
 | 实现 | "实现这个变更" | 按 tasks 用 TDD:红→绿→重构,前后端跨域隔离、mock 优先 |
-| 验证 | "验证 <name>" | L1 构建 + L2 `openspec validate <name>` + L3 测试 → 写 `verify.md` 凭证 |
+| 验证 | "验证 <name>" | `$openspec-verify`(三层:L1 构建 + L2 spec 对齐 + L3 测试)→ 写 `verify.md` 凭证 |
 | 归档 | "归档 <name>" | 查 `verify.md` 门禁(`overall: PASS`)→ `openspec archive <name>` |
 
 常用 CLI 辅助:
@@ -169,6 +174,41 @@ openspec instructions --change <n>  # 取该 artifact 富化指引
 
 ---
 
+## 场景四:跨栈功能协调(前后端联动)
+
+当一个功能跨多个栈(如前端小程序 + 后端 Java,分属独立 git 仓库),单栈 change 不够:前端 agent 按跨域禁令正确排除后端,但"声明的后端依赖"没有归属,会被静默丢失(没人创建对应的兄弟 change)。scaffold.sh 对 ≥2 栈已自动建好协调层(context-store + workspace),用 OpenSpec 1.4.1 原生的 **initiative(父级)+ per-stack change(子级)** 模式解决。
+
+### 对话 · 跨栈功能
+
+**用户**:
+> 技师任务详情页:前端小程序(ops_wechat)要调后端(ops_sev)的新接口。前端先做,后端另开提案。
+
+**AI**:
+1. **建父级 initiative**(跨仓库持久意图,= "子流程"的父):
+   ```bash
+   openspec initiative create task-flow --store ops-store --title "技师任务详情/历史全链路"
+   ```
+2. **前端 change**(ops_wechat 仓库内,挂到父级):
+   ```bash
+   cd ops_wechat
+   openspec new change wechat-task-detail --initiative task-flow --store ops-store
+   # proposal.md "后端依赖"节声明所需接口(POST /api/wechat/task/detail 等)
+   # Scope Out: 后端接口实现(由 Backend Agent 另行提案)
+   ```
+3. **后端 change**(ops_sev 仓库内,兄弟提案):
+   ```bash
+   cd ops_sev
+   openspec new change sev-task-detail-api --initiative task-flow --store ops-store
+   # proposal.md 实现前端声明的接口
+   ```
+4. **各自实现**(跨域禁令不变;前端 mock 优先)→ 各自 `$openspec-verify` → 各自 `$openspec-archive-change`
+5. **完成门禁**:`openspec status` 可见两个 change 都挂载到同一 initiative;全部 verify PASS → 功能才算完
+
+> 协调会话(中立地,不写领域代码):`openspec workspace open --agent codex-cli`
+> 跨栈的接口契约/设计决策放在 initiative 的 `design.md` / `decisions.md` 里,双方共享。
+
+---
+
 ## 速查:可直接复制的命令
 
 ```bash
@@ -178,7 +218,7 @@ openspec instructions --change <n>  # 取该 artifact 富化指引
 # 三栈(web + mobile)
 ./scaffold.sh <name> --stacks backend,frontend,frontend-mobile --tools codex
 
-# 双工具(Claude + Codex 都用)
+# 双工具(openspec init 生成 .codex/ + .claude/ 指令文件;LoopEng 增强只注入 .codex/)
 ./scaffold.sh <name> --tools codex,claude
 
 # 预览不落地
@@ -193,10 +233,11 @@ openspec instructions --change <n>  # 取该 artifact 富化指引
 # 跳过 init(稍后手动 openspec init)
 ./scaffold.sh <name> --no-init
 
-# 日常 loop(CLI 方式;或用 $ 技能如 $openspec-apply-change)
-openspec new change <name>           # 提案
-openspec validate <name>             # 验证(L2 spec 对齐)
-openspec archive <name>              # 归档
+# 日常 loop($ 技能方式;或用 openspec CLI 对应命令)
+$openspec-propose                    # 提案:澄清需求 → 写 proposal + spec
+$openspec-apply-change               # 实现:按 tasks TDD
+$openspec-verify                     # 三层验证(L1 构建/L2 spec 对齐/L3 测试)→ 写 verify.md
+$openspec-archive-change             # verify.md overall=PASS → 归档
 ```
 
 **让 AI 代劳**:直接说"用 loop-eng-codex 给 X 搭脚手架 / 审计 X / 把 X 的 AGENTS.md 拆开 / 提一个 X 变更并走 loop",AI 会选对应模式或 CLI 执行。
