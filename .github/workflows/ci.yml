@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'skills/**'
+      - 'lib/**'
+      - 'tests/**'
+      - 'build.sh'
+      - '.github/workflows/ci.yml'
+  pull_request:
+    branches: [main, master]
+    paths:
+      - 'skills/**'
+      - 'lib/**'
+      - 'tests/**'
+      - 'build.sh'
+      - '.github/workflows/ci.yml'
+
+jobs:
+  build-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify scaffold.sh files match build output
+        run: bash build.sh --check
+
+  test:
+    runs-on: ${{ matrix.os }}
+    needs: build-check
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install openspec CLI
+        run: npm install -g @fission-ai/openspec@latest
+
+      - name: Verify bash version
+        run: bash --version
+
+      - name: Syntax check (both versions)
+        run: |
+          bash -n skills/loopforge-cc/scaffold.sh
+          bash -n skills/loopforge-codex/scaffold.sh
+
+      - name: Run test suite
+        run: bash tests/run-tests.sh
+
+  consistency-check:
+    runs-on: ubuntu-latest
+    needs: build-check
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cross-version consistency
+        run: |
+          CC="skills/loopforge-cc/scaffold.sh"
+          CX="skills/loopforge-codex/scaffold.sh"
+          
+          echo "=== Version consistency ==="
+          cc_ver=$(grep '^LOOPFORGE_VERSION=' "$CC" | head -1)
+          cx_ver=$(grep '^LOOPFORGE_VERSION=' "$CX" | head -1)
+          echo "CC:  $cc_ver"
+          echo "CX:  $cx_ver"
+          [ "$cc_ver" = "$cx_ver" ] || { echo "FAIL: version mismatch"; exit 1; }
+          
+          echo "=== Shared block identical ==="
+          cc_start=$(grep -n '^cmd_tokens' "$CC" | head -1 | cut -d: -f1)
+          cx_start=$(grep -n '^cmd_tokens' "$CX" | head -1 | cut -d: -f1)
+          cc_end=$(wc -l < "$CC")
+          cx_end=$(wc -l < "$CX")
+          sed -n "${cc_start},${cc_end}p" "$CC" > /tmp/cc_shared.txt
+          sed -n "${cx_start},${cx_end}p" "$CX" > /tmp/cx_shared.txt
+          diff /tmp/cc_shared.txt /tmp/cx_shared.txt && echo "Shared block: IDENTICAL" || { echo "FAIL: shared block differs"; exit 1; }
+          
+          echo "=== All consistency checks passed ==="

@@ -1,0 +1,5 @@
+interface:
+  display_name: "Loop Engineering (Codex)"
+  short_description: "Scaffold, audit & restructure LoopForge projects"
+  brand_color: "#0EA5E9"
+  default_prompt: "Use $loopforge-codex to scaffold, audit, or restructure a Loop Engineering project for Codex."

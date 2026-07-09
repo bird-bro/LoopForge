@@ -1,13 +1,13 @@
 ---
-name: loop-eng-codex
-description: Loop Engineering (Codex edition) — scaffold, audit, and restructure an AI-collaboration project against the OpenSpec + Superpowers + Harness (LoopEng) paradigm, adapted for Codex. AGENTS.md is the live entry file; the propose→verify→archive loop is driven by `$skill-name` invocation (`$openspec-propose` / `$openspec-apply-change` / `$openspec-verify` / `$openspec-archive-change`) + the `openspec` CLI; skills are invoked via `$skill-name` (e.g. `$loop-eng-codex`). Three modes — scaffold (generate a complete framework via scaffold.sh), audit (32-check maturity scoring), restructure (split a monolithic AGENTS.md/CLAUDE.md into per-stack agents + optimize). Use when the user asks to "set up loop engineering", "scaffold a LoopEng project", "audit project structure", "split AGENTS.md", or "optimize AI collaboration structure" in Codex.
+name: loopforge-codex
+description: Loop Engineering (Codex edition) — scaffold, audit, and restructure an AI-collaboration project against the OpenSpec + Superpowers + Harness (LoopForge) paradigm, adapted for Codex. AGENTS.md is the live entry file; the propose→verify→archive loop is driven by `$skill-name` invocation (`$openspec-propose` / `$openspec-apply-change` / `$openspec-verify` / `$openspec-archive-change`) + the `openspec` CLI; skills are invoked via `$skill-name` (e.g. `$loopforge-codex`). Three modes — scaffold (generate a complete framework via scaffold.sh), audit (33-check maturity scoring), restructure (split a monolithic AGENTS.md/CLAUDE.md into per-stack agents + optimize). Use when the user asks to "set up loop engineering", "scaffold a LoopForge project", "audit project structure", "split AGENTS.md", or "optimize AI collaboration structure" in Codex.
 ---
 
 # Loop Engineering — Scaffold · Audit · Restructure (Codex Edition)
 
 **OpenSpec defines direction (WHAT), Superpowers enforces discipline (HOW), Harness orchestrates collaboration (WHO).**
 
-> **Codex edition.** `openspec init --tools codex` generates project-local `.codex/skills/openspec-*` skills — `openspec-propose`, `openspec-apply-change`, `openspec-archive-change`, `openspec-explore`, `openspec-sync-specs` — invoked via `$skill-name`. Loop-eng adds `openspec-verify` (three-layer verification: L1 build / L2 spec alignment / L3 tests) + injects verify triggers/gates into the apply/archive skills. Codex drives the propose → verify → archive loop via `$` skills + the `openspec` CLI + natural language. Skills also auto-trigger by their `description`. The Superpowers 5-step discipline is encoded as instructions inside `AGENTS.md`. `AGENTS.md` is Codex's live entry file; `CLAUDE.md` is the Claude Code mirror (also generated, but Codex does not read it).
+> **Codex edition.** `openspec init --tools codex` generates project-local `.codex/skills/openspec-*` skills — `openspec-propose`, `openspec-apply-change`, `openspec-archive-change`, `openspec-explore`, `openspec-sync-specs` — invoked via `$skill-name`. LoopForge adds `openspec-verify` (three-layer verification: L1 build / L2 spec alignment / L3 tests) + injects verify triggers/gates into the apply/archive skills. Codex drives the propose → verify → archive loop via `$` skills + the `openspec` CLI + natural language. Skills also auto-trigger by their `description`. The Superpowers 5-step discipline is encoded as instructions inside `AGENTS.md`. `AGENTS.md` is Codex's live entry file; `CLAUDE.md` is the Claude Code mirror (also generated, but Codex does not read it).
 
 ## Core Paradigm
 
@@ -26,7 +26,7 @@ Key principles: Spec as Code. TDD enforced (not a slogan). Discipline baked into
 | Mode | When to use | How |
 |:--|:--|:--|
 | **scaffold** | New project, no structure yet | Run `scaffold.sh --tools codex` → complete framework |
-| **audit** | Existing project, check health | Run 32 checks, score maturity, report gaps |
+| **audit** | Existing project, check health | Run 33 checks, score maturity, report gaps |
 | **restructure** | Monolithic `AGENTS.md` (or `CLAUDE.md`) or low audit score | Split into per-stack agents + apply Phase 5 order |
 
 ## Execution Instructions
@@ -37,18 +37,24 @@ Key principles: Spec as Code. TDD enforced (not a slogan). Discipline baked into
 
 ## CLI Subcommands (`scaffold.sh`)
 
-The generator ships with four subcommands (run directly, or ask the AI to run them). In a globally-installed skill, scaffold.sh lives next to this SKILL.md (e.g. `~/.codex/skills/loop-eng-codex/scaffold.sh`); run it with an absolute path or copy it into the project.
+The generator ships with ten subcommands (run directly, or ask the AI to run them). In a globally-installed skill, scaffold.sh lives next to this SKILL.md (e.g. `~/.codex/skills/loopforge-codex/scaffold.sh`); run it with an absolute path or copy it into the project.
 
 | Subcommand | Purpose |
 |:--|:--|
 | `scaffold.sh <name> [opts]` | Generate the framework (default) |
 | `scaffold.sh list [opts]` | Preview the file manifest without writing anything |
-| `scaffold.sh check [project]` | Self-check (env + script) + LoopEng compliance audit; no arg = self-check only |
+| `scaffold.sh check [project]` | Self-check (env + script) + LoopForge compliance audit; no arg = self-check only |
 | `scaffold.sh tokens [project]` | Token audit of auto-loaded files — per-file tokens + CJK% (O7 overhead); no arg = cwd |
+| `scaffold.sh validate <change-dir>` | Validate a change's artifact structure (proposal/spec/design/tasks) |
+| `scaffold.sh changes [project]` | List all changes and their phase/status |
+| `scaffold.sh doctor [project]` | Health check: deps, scaffold, guard, verify config |
+| `scaffold.sh version` | Print LoopForge version + environment |
+| `scaffold.sh contract [--force] <change-dir>` | Auto-generate `execution-contract.md` from planning artifacts |
+| `scaffold.sh restructure [project]` | Analyze a monolithic entry file and plan a per-stack split |
 
-`check` prints PASS / PARTIAL / FAIL per check plus a maturity score (an automatable subset of the 32; use audit mode for the full set). It also auto-measures **O7** — CJK char ratio in auto-loaded files, threshold via the `CJK_THRESHOLD` env var (default 10). For per-file token counts and CJK breakdown, run `scaffold.sh tokens`. See `USAGE-PLAYBOOK-CODEX.md` for dialogue-style Codex usage.
+`check` prints PASS / PARTIAL / FAIL per check plus a maturity score (an automatable subset of the 33; use audit mode for the full set). It also auto-measures **O7** — CJK char ratio in auto-loaded files, threshold via the `CJK_THRESHOLD` env var (default 10). For per-file token counts and CJK breakdown, run `scaffold.sh tokens`. See `USAGE-PLAYBOOK-CODEX.md` for dialogue-style Codex usage.
 
-> `check` (in scaffold.sh) is Codex-aware: its E3/E4/S4/S5/S6/S8/H1/H5/H9 lines probe `AGENTS.md` (Codex entry) and fall back to `.claude/` structures only when Claude Code is enabled (`--tools codex,claude`). In a Codex-only project they score against `AGENTS.md`, not `.claude/`. For the full 32-check semantic audit, use the criteria below.
+> `check` (in scaffold.sh) is Codex-aware: its E3/E4/S4/S5/S6/S8/H1/H5/H9 lines probe `AGENTS.md` (Codex entry) and fall back to `.claude/` structures only when Claude Code is enabled (`--tools codex,claude`). In a Codex-only project they score against `AGENTS.md`, not `.claude/`. For the full 33-check semantic audit, use the criteria below.
 
 ---
 
@@ -65,7 +71,7 @@ Generate a complete Loop Engineering framework from scratch.
    ```bash
    ./scaffold.sh <project-name> --stacks backend,frontend[,frontend-mobile] --tools codex
    ```
-   `--tools codex` is passed to `openspec init` so OpenSpec generates Codex-flavored instruction files. Use `--tools codex,claude` if you also use Claude Code on the same project. `scaffold.sh` calls `openspec init` automatically (use `--no-init` to skip), then layers LoopEng templates on top. It is **non-destructive**: existing files are skipped.
+   `--tools codex` is passed to `openspec init` so OpenSpec generates Codex-flavored instruction files. Use `--tools codex,claude` if you also use Claude Code on the same project. `scaffold.sh` calls `openspec init` automatically (use `--no-init` to skip), then layers LoopForge templates on top. It is **non-destructive**: existing files are skipped.
 2. On-demand components — **Codex adaptation**: the Superpowers 5-step discipline (brainstorm → writing-plans → executing-plans → code-review → verification-before-completion) is **already encoded as instructions in each generated `AGENTS.md`** — no separate skill install needed. For frontend projects, fold frontend-design guidance into the frontend `AGENTS.md` (there is no `.claude/skills/frontend-design` in Codex).
 3. Fill `[BRACKETS]` placeholders in `openspec/project.md`, `openspec/specs/*`, and per-stack `AGENTS.md`.
 4. Run **Mode: Audit** to verify maturity.
@@ -87,9 +93,9 @@ Generate a complete Loop Engineering framework from scratch.
 
 Environment score = E_yes / 4. 0/4 → STOP; 1–3/4 → WARNING; 4/4 → PASS.
 
-> Note: `scaffold.sh check` is Codex-aware — E3 probes root `AGENTS.md` and E4 probes the frontend `AGENTS.md` design guidance (Claude constructs are only checked when `--tools codex,claude`). E3+ checks for the verify skill (`.codex/skills/openspec-verify/` or `.claude/commands/opsx/verify.md`) — created by loop-eng, not `openspec init`. Use the criteria above for the full semantic audit.
+> Note: `scaffold.sh check` is Codex-aware — E3 probes root `AGENTS.md` and E4 probes the frontend `AGENTS.md` design guidance (Claude constructs are only checked when `--tools codex,claude`). E3+ checks for the verify skill (`.codex/skills/openspec-verify/` or `.claude/commands/opsx/verify.md`) — created by loopforge, not `openspec init`. Use the criteria above for the full semantic audit.
 
-### Phase 1: 32 Checks
+### Phase 1: 33 Checks
 
 #### 1.1 OpenSpec — "Define Direction" (O1–O8)
 
@@ -115,7 +121,8 @@ Environment score = E_yes / 4. 0/4 → STOP; 1–3/4 → WARNING; 4/4 → PASS.
 | S5 | Domain guidance | Stack-specific deep guidance lives in the per-stack `AGENTS.md`; global Codex skills may live in `~/.codex/skills/` |
 | S6 | Permissions configured | Codex sandbox/permission profile + `config.toml` `[projects.*]` trust set; dangerous ops gated by sandbox |
 | S7 | Lifecycle hooks | Codex `notify` / app hooks configured as needed (Codex has no `.claude` SessionStart/PreToolUse/Stop hooks) |
-| S8 | Reviewer / Coordinator roles | Reviewer (read+execute only, no edits) + Coordinator encoded as role instructions in `AGENTS.md` or Codex subagents |
+| S8 | Reviewer / Coordinator / Implementer roles | Reviewer (read+execute only, no edits) + Coordinator + Implementer (SDD task dispatch) encoded as role instructions in `AGENTS.md` or Codex subagents |
+| S8b | SDD artifacts | `openspec/sdd/` has `implementer-prompt.md` + `reviewer-prompt.md` + `progress.md` (subagent-driven development templates) |
 | S9 | Context budget | Agent `AGENTS.md` < 3K tokens; deep details in `openspec/` for on-demand load |
 
 #### 1.3 Harness — "Orchestrate Collaboration" (H1–H11)
@@ -213,7 +220,7 @@ Project map + business context (1–3 sentences) + tech-stack table + developmen
 
 ## Output Format (Audit)
 
-1. **Diagnostic table** — all 32 checks with YES / PARTIAL / NO + per-layer scores
+1. **Diagnostic table** — all 33 checks with YES / PARTIAL / NO + per-layer scores
 2. **Maturity grade** — overall % + level label
 3. **Before/after metrics** — context-efficiency ratio (target > 3x)
 4. **Top 3 issues** — root cause + Fix reference + impact estimate
@@ -275,6 +282,62 @@ Stable pattern (CLI-driven; works in Codex and Claude Code):
 ```
 
 > `--schema workspace-planning --areas ...` (a single cross-area change) is a **beta** alternative; the initiative + repo-local-change pattern above is the stable recommendation.
+
+
+## Subagent-Driven Development (SDD)
+
+When a change has many tasks or cross-module dependencies, the apply phase can dispatch
+**subagents** instead of implementing everything in-context. This prevents context bloat
+and enforces per-task accountability.
+
+### Execution Modes (selected during propose phase)
+
+| Mode | When | How |
+|:--|:--|:--|
+| **Inline** | <=3 tasks, no cross-module deps | Implement directly in-context (no subagent) |
+| **Batch Inline** | >3 tasks, same module, no risk indicators | Implement sequentially in-context (no subagent dispatch) |
+| **SDD** | Cross-module deps, >3 tasks, risk indicators | Dispatch implementer subagent per task, then reviewer subagent |
+
+### SDD Workflow (when execution_mode: SDD)
+
+```
+For each task batch (from execution-contract.md):
+  1. Dispatch Implementer subagent
+     - CC: Task tool with openspec/sdd/implementer-prompt.md template
+     - Codex: role-switch to Implementer role
+     - Fill: [task name], [BRIEF_FILE], [directory], [REPORT_FILE], [MODEL]
+  2. Implementer does: TDD (RED->GREEN->REFACTOR) or characterization/debt
+     -> commit -> self-review -> report DONE|BLOCKED|NEEDS_CONTEXT
+  3. On DONE: dispatch Reviewer subagent
+     - CC: Task tool with openspec/sdd/reviewer-prompt.md template
+     - Codex: role-switch to Reviewer role
+     - Reviewer checks: spec compliance + code quality + tests -> Approved|Needs fixes
+  4. Update openspec/sdd/progress.md (status, commits, review verdict)
+  5. On BLOCKED/NEEDS_CONTEXT: escalate to user (retry cap 2b applies)
+  6. On "Needs fixes": re-dispatch Implementer with reviewer feedback
+```
+
+### Frontend-Backend Subagent Coordination
+
+For cross-stack features (e.g. frontend + backend), SDD works alongside the multi-stack
+coordination layer:
+
+- **Each stack dispatches its own implementer subagents** (cross-domain ban unchanged).
+- The **execution-contract.md** defines task batches per stack and inter-stack dependencies.
+- **Frontend implementer** mocks APIs from `openspec/specs/api/spec.md` (MSW) before
+  backend is ready; **backend implementer** implements to the same spec.
+- The **Coordinator** (root AGENTS.md role) tracks both stacks' progress via
+  `openspec/sdd/progress.md` and the initiative parent (`openspec status`).
+- **Cross-stack gate**: feature is done only when ALL linked changes verify PASS
+  (not just one stack's tasks).
+
+### SDD Artifacts (generated by scaffold)
+
+| File | Purpose |
+|:--|:--|
+| `openspec/sdd/implementer-prompt.md` | Template for dispatching implementer subagents |
+| `openspec/sdd/reviewer-prompt.md` | Template for dispatching reviewer subagents |
+| `openspec/sdd/progress.md` | Per-task progress ledger (status, commits, review verdict) |
 
 ## OpenSpec ⇄ Discipline Loop (Codex)
 
