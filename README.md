@@ -2,7 +2,7 @@
 
 [中文文档](README-CN.md) | English
 
-> **Solo dev juggling several legacy codebases - no specs, no tests, a pile of spaghetti - and blocked by TDD?** One command delivers an “AI-collaboration maturity” report + action plan, then scaffolds a structured Claude Code / Codex workflow - so spec-driven development runs on legacy code instead of being blocked by TDD’s iron law.
+> **Solo dev juggling several legacy codebases - no specs, no tests, a pile of spaghetti - and blocked by TDD?** 【LoopForge】One command delivers an “AI-collaboration maturity” report + action plan, then scaffolds a structured Claude Code / Codex workflow - so spec-driven development runs on legacy code instead of being blocked by TDD’s iron law.
 
 ---
 
