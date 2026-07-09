@@ -2,7 +2,7 @@
 
 [中文文档](README-CN.md) | English
 
-> 对话剧本(操作手册):Claude Code 版 [USAGE-PLAYBOOK.md](skills/loopforge-cc/USAGE-PLAYBOOK.md) · Codex 版 [USAGE-PLAYBOOK-CODEX.md](skills/loopforge-codex/USAGE-PLAYBOOK-CODEX.md)
+> **Solo dev juggling several legacy codebases - no specs, no tests, a pile of spaghetti - and blocked by TDD?** One command delivers an “AI-collaboration maturity” report + action plan, then scaffolds a structured Claude Code / Codex workflow - so spec-driven development runs on legacy code instead of being blocked by TDD’s iron law.
 
 ---
 
@@ -183,3 +183,5 @@ When a single `CLAUDE.md` (Claude) or `AGENTS.md` (Codex) covers multiple stacks
 ## License
 
 See [LICENSE](LICENSE).
+
+> Conversation playbook (manual): Claude Code edition [USAGE-PLAYBOOK.md](skills/loopforge-cc/USAGE-PLAYBOOK.md) · Codex edition [USAGE-PLAYBOOK-CODEX.md](skills/loopforge-codex/USAGE-PLAYBOOK-CODEX.md)

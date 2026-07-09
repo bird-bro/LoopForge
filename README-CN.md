@@ -2,7 +2,7 @@
 
 中文文档 | [English](README.md)
 
-> 对话剧本(操作手册):Claude Code 版 [USAGE-PLAYBOOK.md](skills/loopforge-cc/USAGE-PLAYBOOK.md) · Codex 版 [USAGE-PLAYBOOK-CODEX.md](skills/loopforge-codex/USAGE-PLAYBOOK-CODEX.md)
+> **一个人扛着好几个没测试、没文档的老项目，还被 TDD卡死？** 一条命令给出 「AI 协作成熟度」体检报告 + 行动计划，生成 Claude Code / Codex 的结构化协作框架--让 spec 驱动开发在屎山上也能跑起来，而不是被 TDD 铁律拦死。
 
 ---
 
@@ -183,3 +183,5 @@ myapp/
 ## 许可证
 
 见 [LICENSE](LICENSE)。
+
+> 对话剧本(操作手册):Claude Code 版 [USAGE-PLAYBOOK.md](skills/loopforge-cc/USAGE-PLAYBOOK.md) · Codex 版 [USAGE-PLAYBOOK-CODEX.md](skills/loopforge-codex/USAGE-PLAYBOOK-CODEX.md)
