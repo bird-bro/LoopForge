@@ -10,7 +10,7 @@
 
 LoopForge starts from a simple question: how do you keep moving when you're a solo developer maintaining multiple legacy projects in production — no spec docs, no tests, a pile of legacy spaghetti code — without getting stuck?
 
-Excellent spec-driven frameworks (like **spec-superflow**, whose engineering quality is genuinely admirable) assume a greenfield or test-backed baseline; on untested legacy code they would correctly block every change. LoopForge learned from them and took a different path: a lightweight generator approach (shell + Python) that audits what's missing first, restructures without disrupting existing code, and safely degrades TDD with characterization tests and debt logging where strict rules would otherwise stall.
+Excellent frameworks spec-superflow assume a greenfield or test-backed baseline; on untested legacy code they would correctly block every change. LoopForge learned from them and took a different path: a lightweight generator approach (shell + Python) that audits what's missing first, restructures without disrupting existing code, and safely degrades TDD with characterization tests and debt logging where strict rules would otherwise stall.
 
 Built around the industrial-grade three-layer paradigm (**OpenSpec + Superpowers + Harness**, a.k.a. OSH / Loop Engineering), LoopForge ships as an AI-collaboration optimization skill in two parallel editions — each with its own `scaffold.sh` (CC edition creates `.claude/`, Codex edition creates `.codex/`):
 
