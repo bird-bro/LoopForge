@@ -250,6 +250,54 @@ scaffold 按栈类型给默认值（backend → `mvn compile -q`，frontend → 
 
 ---
 
+## 框架盘点:进入 Loop 循环前的项目分析(老项目必做)
+
+> 时机:项目接入(场景一/二)完成后、**第一个功能(进入 propose -> apply -> verify -> archive 循环)之前**。
+> 目的:把现有项目的框架约定"盘点"进 `openspec/specs/` 与各栈 `AGENTS.md`,让后续每个功能的 spec 都**对齐现状**,避免 AI 重复造轮子或违反既有约定(如自造返回封装、绕过统一日志)。
+> 这个盘点**不产生代码变更**,只产出 spec / 约定文档。
+
+### 为什么要先盘点
+
+直接让 AI 做第一个功能,它看不到项目里已有的 `common`/`framework` 基础设施,容易:
+
+- 自造一个 `Result` 返回封装,而项目早有统一的 `ApiResponse<T>`;
+- 用 `print`/`System.out` 打日志,而项目有统一的 AOP 日志切面;
+- 重复写工具方法,而 `common/utils` 里已有;
+- 错误码各搞各的,而项目有统一的错误码表。
+
+先盘点 -> 这些约定进 spec -> AI 做功能时读 spec 就会遵守。
+
+### 对话 · 框架盘点
+
+**用户**:
+> 开始做功能前,先盘点现有项目框架,把约定写进 openspec/specs/ 和各栈 AGENTS.md。后台重点看 common、framework 这些模块。
+
+**AI**:
+1. **扫结构**:读后端模块划分(`common`、`framework`、`web`、`service`...),列出模块及职责。
+2. **抽横切约定**(重点):
+   - **统一返回封装**:`ApiResponse<T>` / `Result<T>` 的结构、成功/失败约定、分页包装 -> `openspec/specs/errors/spec.md`(统一响应 + 错误码体系)
+   - **日志切面**:AOP 日志注解(如 `@Log`)、日志级别/格式约定、链路追踪 ID -> 各栈 `AGENTS.md` Coding Standards
+   - **共有方法/工具类**:`common/utils`、基类(`BaseController`/`BaseService`/`BaseEntity`)、通用 Mapper -> 各栈 `AGENTS.md`(标注"用现有 X,不要自造")
+   - **异常处理**:全局异常处理器、业务异常基类、错误码枚举 -> `openspec/specs/errors/spec.md`
+   - **鉴权/拦截器**:登录校验、权限注解、拦截器链 -> `openspec/specs/api/spec.md`
+   - **数据访问约定**:Mapper/Repository 基类、分页插件、ORM 约定 -> `openspec/specs/data/spec.md`
+3. **写文档**(落到对应 md):
+
+   | 盘点项 | 写入位置 |
+   |:--|:--|
+   | 模块图 / 架构 | `openspec/project.md` |
+   | 统一返回 + 错误码 | `openspec/specs/errors/spec.md` |
+   | 接口约定 / 鉴权 | `openspec/specs/api/spec.md` |
+   | 数据访问约定 | `openspec/specs/data/spec.md` |
+   | 共有方法 / 日志切面 / 基类 | 各栈 `AGENTS.md` 的 Coding Standards |
+   | 跨切面约定汇总(可选) | `openspec/specs/conventions/spec.md`(新建) |
+
+4. **报告**:产出"框架盘点表"(模块 -> 职责 -> 约定 -> 对应 md),请用户校对。
+5. **门禁**:用户确认盘点准确后,才进入第一个功能的 `openspec new change <name>`。
+
+> 关键纪律:盘点只写 spec/约定,**不动代码**。后续功能开发时,AI 读这些 spec 就会复用 `common` 工具、走统一返回、挂 AOP 日志,而不是另起炉灶。
+> 本 skill 面向"已有代码、但缺 CLAUDE.md/AGENTS.md"的项目(场景一/二皆是老项目),故框架盘点对两者都适用--接入完成、第一个功能前必做,不存在"从零搭建"可跳过的场景。
+
 ## 场景三:日常 Loop 循环
 
 每个功能都走闭环,Superpowers 由 OpenSpec 命令自动触发:
