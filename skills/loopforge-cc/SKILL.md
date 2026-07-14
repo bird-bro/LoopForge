@@ -1,6 +1,6 @@
 ---
 name: loopforge-cc
-description: Loop Engineering — scaffold, audit, and restructure an AI-collaboration project against the OpenSpec + Superpowers + Harness (LoopForge) paradigm. Three modes — scaffold (generate framework via scaffold.sh for existing code without CLAUDE.md), audit (33-check maturity scoring), restructure (split a monolithic CLAUDE.md into per-stack agents + optimize). Use when the user asks to "set up loop engineering", "scaffold a LoopForge project", "audit project structure", "split CLAUDE.md", or "optimize AI collaboration structure", or in Chinese: "接入 loop 工程", "搭 loop 脚手架", "loop 工程框架", "审计项目结构", "拆分 CLAUDE.md".
+description: Loop工程框架（LoopForge）- 为已有代码项目接入 OpenSpec + Superpowers + Harness 工程范式。当用户说"接入 loop 工程"、"搭 loop 脚手架"、"loop 工程框架"、"审计项目结构"、"拆分 CLAUDE.md"时触发。三种模式：scaffold（为已有代码无 CLAUDE.md 的项目生成框架）、audit（33 项成熟度审计）、restructure（拆分单体 CLAUDE.md 为按栈 agent 文件）。English: Loop Engineering - scaffold, audit, and restructure an AI-collaboration project against the OpenSpec + Superpowers + Harness (LoopForge) paradigm. Use when the user asks to "set up loop engineering", "scaffold a LoopForge project", "audit project structure", "split CLAUDE.md", or "optimize AI collaboration structure".
 ---
 
 # Loop Engineering — Scaffold · Audit · Restructure
