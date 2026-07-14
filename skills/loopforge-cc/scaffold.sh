@@ -369,7 +369,11 @@ __FM_CLAUDE__
 
   rm -f "$_LOOP_VERIFY_BODY"
 
-  cat <<'__LOOPFORGE_VERIFY_CFG__' | write_if_absent openspec/verify.config.yaml
+  # Generate verify.config.yaml dynamically from configured stacks.
+  # Respects --backend-dir / --frontend-dir / --mobile-dir; each enabled stack
+  # gets a sensible default build/test command the user can customise later.
+  {
+    cat <<'__VC_HEADER__'
 # OpenSpec verify configuration
 # /opsx:verify reads L1 (build) and L3 (test) commands from here.
 # Place at: <project>/openspec/verify.config.yaml
@@ -379,19 +383,32 @@ __FM_CLAUDE__
 # - `dir` is the stack directory relative to the project root; builds/tests run there.
 
 stacks:
-  ops_wechat:
-    dir: ops_wechat
-    build: pnpm build:mp
-    test: pnpm test            # Vitest
-  backend:
-    dir: backend
+__VC_HEADER__
+    if has backend; then
+      cat <<EOF
+  ${BACKEND_DIR}:
+    dir: ${BACKEND_DIR}
     build: mvn compile -q
     test: mvn test -q
-  ops_admin:
-    dir: ops_admin
+EOF
+    fi
+    if has frontend; then
+      cat <<EOF
+  ${FRONTEND_DIR}:
+    dir: ${FRONTEND_DIR}
+    build: pnpm build
+    test: null                 # no test runner -> L3 SKIP (set to pnpm test if Vitest exists)
+EOF
+    fi
+    if has frontend-mobile; then
+      cat <<EOF
+  ${MOBILE_DIR}:
+    dir: ${MOBILE_DIR}
     build: pnpm build
     test: null                 # no test runner -> L3 SKIP
-__LOOPFORGE_VERIFY_CFG__
+EOF
+    fi
+  } | write_if_absent openspec/verify.config.yaml
 
   cat <<'__LOOPFORGE_VERIFY_TPL__' | write_if_absent openspec/verify-result.template.md
 <!--
