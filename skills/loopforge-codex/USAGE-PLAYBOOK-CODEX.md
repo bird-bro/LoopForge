@@ -149,6 +149,124 @@ Claude 版用 `/opsx:propose` 斜杠命令;**Codex 版用 `$openspec-propose`(`$
 
 ---
 
+## scaffold.sh 参数与排错指南
+
+> 场景一、二中的 scaffold 命令完整参数说明与常见问题排查。新项目和老项目接入都会用到。
+
+### 命令格式
+
+```bash
+./scaffold.sh <项目名> [选项]
+```
+
+**项目名是必填位置参数**，即使使用了 `--dir .`。用于默认目录名、context-store 命名、`@@PROJECT_NAME@@` 占位符替换。
+
+### 全部参数
+
+| 参数 | 默认值 | 说明 |
+|:--|:--|:--|
+| `<项目名>` | （必填）| 项目名称 |
+| `--dir <路径>` | `./<项目名>` | 目标目录。**`--dir .` = 在当前目录原地生成** |
+| `--stacks <列表>` | `backend,frontend` | 栈类型：`backend`、`frontend`、`frontend-mobile` |
+| `--backend-dir <名>` | `backend` | 后端目录名。**必须与真实目录名一致** |
+| `--frontend-dir <名>` | `frontend-web` | 前端 Web 目录名。**必须与真实目录名一致** |
+| `--mobile-dir <名>` | `frontend-mobile` | 移动端目录名 |
+| `--tools <列表>` | `codex` | openspec init 工具类型 |
+| `--no-init` | （关闭）| 跳过 `openspec init`，仅生成 LoopForge 增强层 |
+
+### 新项目 vs 老项目：选对命令
+
+| 场景 | 命令 | 原因 |
+|:--|:--|:--|
+| 全新空目录 | `scaffold <name>` | 从零生成完整框架 |
+| 已有代码 + 已有 AGENTS.md | `restructure <dir>` 先分析 | scaffold 会创建占位目录；restructure 只分析不写 |
+| 已有代码 + 无 openspec/ | `scaffold <name> --dir . --backend-dir <真实名> --frontend-dir <真实名>` | 原地生成，不创建嵌套子目录 |
+| 已有 openspec/ + 缺 .codex/ | `scaffold <name> --dir . --no-init` | write_if_absent 跳过已有，只补缺失 |
+
+### 关键用法：在已有项目根目录原地生成
+
+```bash
+cd /path/to/myproject
+./scaffold.sh myproject --dir . --backend-dir ops_sev --frontend-dir ops_web
+```
+
+三个要点：
+- **`--dir .`**：不加则创建 `./myproject/` 子目录（嵌套），把框架文件放到子目录而非项目根
+- **`--backend-dir`/`--frontend-dir`**：不加则用默认名 `backend`/`frontend-web`，创建空占位目录而非在真实代码目录内生成
+- **`--no-init`**：已有 openspec/ 时跳过 init，避免重复初始化
+
+### 生成后的检查清单
+
+| 检查项 | 命令 | 预期 |
+|:--|:--|:--|
+| 无多余占位目录 | `ls` | 不应有 `backend/`、`frontend-web/` 等不匹配的空目录 |
+| verify.config.yaml 栈名 | `cat openspec/verify.config.yaml` | 与 `--backend-dir`/`--frontend-dir` 一致 |
+| verify.config.yaml 命令 | 同上 | build/test 命令符合实际技术栈 |
+| 已有文件未被覆盖 | `head AGENTS.md` | 内容应与原来一致 |
+| 审计通过 | `./scaffold.sh check .` | ≥ 90% 工业级 |
+
+### 常见问题排查
+
+#### Q1: `Error: project name required`
+
+```
+# ❌ 只传了 --dir .，缺项目名
+./scaffold.sh --dir .
+
+# ✅ 项目名是必填位置参数
+./scaffold.sh OPS --dir .
+```
+
+#### Q2: 创建了嵌套子目录（`OPS/OPS/`）
+
+在项目目录内运行 `scaffold.sh OPS`，默认目标 `./OPS` 指向子目录而非当前目录。
+
+```
+# ❌ 在 /project/OPS/ 内运行 -> 创建 /project/OPS/OPS/
+cd /project/OPS && ./scaffold.sh OPS
+
+# ✅ 用 --dir . 指向当前目录
+cd /project/OPS && ./scaffold.sh OPS --dir . --backend-dir ops_sev --frontend-dir ops_web
+
+# ✅ 或从父目录运行
+cd /project && ./scaffold.sh OPS --dir ./OPS --backend-dir ops_sev --frontend-dir ops_web
+```
+
+#### Q3: 生成了 `backend/` 和 `frontend-web/` 空占位目录
+
+没传 `--backend-dir`/`--frontend-dir`，用了默认目录名。
+
+```
+# ❌ 默认名 backend/frontend-web 不匹配真实目录
+./scaffold.sh OPS --dir .
+
+# ✅ 传入真实目录名
+./scaffold.sh OPS --dir . --backend-dir ops_sev --frontend-dir ops_web
+
+# 🔧 已生成的占位目录直接删除
+rm -rf backend frontend-web
+```
+
+#### Q4: `warn: context-store setup failed` / `warn: workspace setup failed`
+
+openspec 1.6.0 移除了 `context-store` 和 `workspace` 子命令。**可安全忽略**——不影响 openspec/、.codex/、verify.config.yaml 的生成。多栈协调改用 openspec 1.6.0 的 `workset` 替代（见 SKILL.md "Cross-Stack Feature"）。
+
+#### Q5: 已有 AGENTS.md 会被覆盖吗？
+
+**不会**。scaffold 使用 `write_if_absent`，已存在的文件输出 `skip (exists)` 并跳过，只有不存在的文件才会被创建。
+
+#### Q6: 第 4 个栈（如 WeChat 小程序）没被覆盖
+
+scaffold 最多支持 3 种栈类型（`backend`、`frontend`、`frontend-mobile`）。第 4 个栈需手动处理：
+1. 在 `openspec/verify.config.yaml` 补该栈的 build/test 配置
+2. 如需 agent 文件，从已有栈的 AGENTS.md 复制改造
+
+#### Q7: verify.config.yaml 的 build/test 命令不对
+
+scaffold 按栈类型给默认值（backend → `mvn compile -q`，frontend → `pnpm build`）。如果技术栈不同（如 Python/Go 后端、npm 前端），**生成后手动编辑** `openspec/verify.config.yaml`。
+
+---
+
 ## 场景三:日常 Loop 循环(新 / 老通用)
 
 每个功能都走闭环。Codex 版用 `$` 技能(`$openspec-propose`/`$openspec-apply-change`/`$openspec-verify`/`$openspec-archive-change`)或 `openspec` CLI 驱动,纪律由 AGENTS.md 承载:
