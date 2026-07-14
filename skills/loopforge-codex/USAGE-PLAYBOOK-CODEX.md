@@ -52,7 +52,9 @@
 ### 对话 1 · 生成框架
 
 **用户**:
-> 项目在 `./myproject`，后端目录 `ops_sev`（Java/Spring），前端目录 `ops_web`（Vue3），没有 AGENTS.md 也没有 openspec/，帮我接入 loop 工程，Codex 优先。
+`$loopforge-codex`
+>
+> 项目在 `./myproject`，后端目录 `ops_sev`（Java/Spring），前端目录 `ops_web`（Vue3），移动端目录 `ops_wechat`（微信小程序），没有 AGENTS.md 也没有 openspec/，帮我接入 loop 工程。
 
 **AI**:确认目录名后执行（**三个 flag 缺一不可**）：
 ```bash
@@ -676,7 +678,7 @@ $openspec-verify                     # 三层验证(L1 构建/L2 spec 对齐/L3 
 $openspec-archive-change             # verify.md overall=PASS → 归档
 ```
 
-**让 AI 代劳**:直接说"用 loopforge-codex 给 X 搭脚手架 / 审计 X / 把 X 的 AGENTS.md 拆开 / 提一个 X 变更并走 loop",AI 会选对应模式或 CLI 执行。
+**在 Codex 中调用**:输入 `$loopforge-codex` 激活 skill，然后描述任务（"给 X 搭脚手架" / "审计 X" / "拆分 AGENTS.md"），AI 会选对应模式或 CLI 执行。也可直接跑 `scaffold.sh` CLI。
 
 ---
 
