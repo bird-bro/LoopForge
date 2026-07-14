@@ -1,6 +1,6 @@
 ---
 name: loopforge-cc
-description: Loop Engineering — scaffold, audit, and restructure an AI-collaboration project against the OpenSpec + Superpowers + Harness (LoopForge) paradigm. Three modes — scaffold (generate a complete new framework via scaffold.sh), audit (33-check maturity scoring), restructure (split a monolithic CLAUDE.md into per-stack agents + optimize). Use when the user asks to "set up loop engineering", "scaffold a LoopForge project", "audit project structure", "split CLAUDE.md", or "optimize AI collaboration structure".
+description: Loop Engineering — scaffold, audit, and restructure an AI-collaboration project against the OpenSpec + Superpowers + Harness (LoopForge) paradigm. Three modes — scaffold (generate framework via scaffold.sh for existing code without CLAUDE.md), audit (33-check maturity scoring), restructure (split a monolithic CLAUDE.md into per-stack agents + optimize). Use when the user asks to "set up loop engineering", "scaffold a LoopForge project", "audit project structure", "split CLAUDE.md", or "optimize AI collaboration structure", or in Chinese: "接入 loop 工程", "搭 loop 脚手架", "loop 工程框架", "审计项目结构", "拆分 CLAUDE.md".
 ---
 
 # Loop Engineering — Scaffold · Audit · Restructure
@@ -23,7 +23,7 @@ Key principles: Spec as Code. TDD enforced (not a slogan). Skills on-demand. No 
 
 | Mode | When to use | How |
 |:--|:--|:--|
-| **scaffold** | New project, no structure yet | Run `scaffold.sh` → complete framework |
+| **scaffold** | Existing code, no CLAUDE.md / openspec/ | Run `scaffold.sh` → complete framework |
 | **audit** | Existing project, check health | Run 33 checks, score maturity, report gaps |
 | **restructure** | Monolithic CLAUDE.md or low audit score | Split into per-stack agents + apply Phase 5 order |
 

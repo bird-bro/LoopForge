@@ -1,6 +1,6 @@
 ---
 name: loopforge-codex
-description: Loop Engineering (Codex edition) — scaffold, audit, and restructure an AI-collaboration project against the OpenSpec + Superpowers + Harness (LoopForge) paradigm, adapted for Codex. AGENTS.md is the live entry file; the propose→verify→archive loop is driven by `$skill-name` invocation (`$openspec-propose` / `$openspec-apply-change` / `$openspec-verify` / `$openspec-archive-change`) + the `openspec` CLI; skills are invoked via `$skill-name` (e.g. `$loopforge-codex`). Three modes — scaffold (generate a complete framework via scaffold.sh), audit (33-check maturity scoring), restructure (split a monolithic AGENTS.md/CLAUDE.md into per-stack agents + optimize). Use when the user asks to "set up loop engineering", "scaffold a LoopForge project", "audit project structure", "split AGENTS.md", or "optimize AI collaboration structure" in Codex.
+description: Loop Engineering (Codex edition) — scaffold, audit, and restructure an AI-collaboration project against the OpenSpec + Superpowers + Harness (LoopForge) paradigm, adapted for Codex. AGENTS.md is the live entry file; the propose→verify→archive loop is driven by `$skill-name` invocation (`$openspec-propose` / `$openspec-apply-change` / `$openspec-verify` / `$openspec-archive-change`) + the `openspec` CLI; skills are invoked via `$skill-name` (e.g. `$loopforge-codex`). Three modes — scaffold (generate framework via scaffold.sh for existing code without AGENTS.md), audit (33-check maturity scoring), restructure (split a monolithic AGENTS.md/CLAUDE.md into per-stack agents + optimize). Use when the user asks to "set up loop engineering", "scaffold a LoopForge project", "audit project structure", "split AGENTS.md", or "optimize AI collaboration structure" in Codex, or in Chinese: "接入 loop 工程", "搭 loop 脚手架", "loop 工程框架", "审计项目结构", "拆分 AGENTS.md".
 ---
 
 # Loop Engineering — Scaffold · Audit · Restructure (Codex Edition)
@@ -25,7 +25,7 @@ Key principles: Spec as Code. TDD enforced (not a slogan). Discipline baked into
 
 | Mode | When to use | How |
 |:--|:--|:--|
-| **scaffold** | New project, no structure yet | Run `scaffold.sh --tools codex` → complete framework |
+| **scaffold** | Existing code, no AGENTS.md / openspec/ | Run `scaffold.sh --tools codex` → complete framework |
 | **audit** | Existing project, check health | Run 33 checks, score maturity, report gaps |
 | **restructure** | Monolithic `AGENTS.md` (or `CLAUDE.md`) or low audit score | Split into per-stack agents + apply Phase 5 order |
 
