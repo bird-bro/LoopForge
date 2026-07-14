@@ -48,6 +48,7 @@
 ## 场景一:已有代码，无 CLAUDE.md / AGENTS.md（首次接入）
 
 > 最常见的初始场景：项目已有代码目录（如 ops_sev/、ops_web/），但还没有 AGENTS.md、openspec/ 或 .codex/。
+> AI 通常一次性完成对话 1-3（scaffold + 填充 + 审计），无需用户分步指令。
 
 ### 对话 1 · 生成框架
 
@@ -56,7 +57,10 @@
 >
 > 项目在 `./myproject`，后端目录 `ops_sev`（Java/Spring），前端目录 `ops_web`（Vue3），移动端目录 `ops_wechat`（微信小程序），没有 AGENTS.md 也没有 openspec/，帮我接入 loop 工程。
 
-**AI**:先确认项目实际的目录结构和栈数量，再构建命令。本项目有 3 个栈：
+**AI**:
+1. **确认环境与目录**：检查 openspec/node 版本，`ls` 项目根确认实际目录和栈数量。
+2. **读取项目文件**：读 `pom.xml`/`package.json` 确认技术栈（框架版本、构建工具、测试框架）。
+3. **构建命令**（根据实际栈数量动态决定 flag）：
 
 | 目录 | 栈类型 | flag |
 |:--|:--|:--|
@@ -70,29 +74,38 @@ cd ./myproject
   --backend-dir ops_sev --frontend-dir ops_web --mobile-dir ops_wechat --tools codex
 ```
 - `--dir .`：在当前目录原地生成，不创建嵌套子目录
-- `--stacks` 和 `--*-dir`：**根据项目实际栈数量决定**。只有后端就只传 `--backend-dir`；有移动端才加 `--mobile-dir`；不是固定要几个
-- 自动跑 `openspec init --tools codex`，生成 `openspec/`、`.codex/skills/`、根 `AGENTS.md`（含 `[fill]` 占位符）、各栈 `AGENTS.md`
+- `--stacks` 和 `--*-dir`：**根据项目实际栈数量决定**。只有后端就只传 `--backend-dir`；有移动端才加 `--mobile-dir`
+- 自动跑 `openspec init --tools codex`，生成 `openspec/`、`.codex/skills/`、根 `AGENTS.md`（含 `[fill]` 占位符）、各栈 `AGENTS.md` + `CLAUDE.md`
+
+4. **创建 workset**（多栈项目）：`openspec workset create <kebab-case-name> --member backend=./ops_sev --member frontend=./ops_web --member frontend-mobile=./ops_wechat`（项目名自动转 kebab-case）。
 
 > 如果项目已有 `openspec/`，加 `--no-init` 跳过初始化。
 > 详细的参数说明和排错见下方「scaffold.sh 参数与排错指南」。
 
-### 对话 2 · 填业务内容
+### 对话 2 · 填充内容（AI 主动执行）
 
-**用户**:
-> myproject 是医疗体检车运营调度系统：后端 Java11 + Spring Boot 2.5 + MyBatis-Plus + PostgreSQL，前端 Vue3 + Element Plus。请把 `openspec/project.md` 和各栈 `AGENTS.md` 的占位符填了。
+> AI 在 scaffold 完成后主动执行，无需用户单独指令。
 
-**AI**:读取用户提供的信息，填充 `openspec/project.md`（系统说明 / 技术栈表 / 模块图 / 架构）、`ops_sev/AGENTS.md` 与 `ops_web/AGENTS.md` 的 `[方括号]` 占位，并把业务上下文与技术栈写入根 `AGENTS.md`（替换 `[fill]` 和 `[1–3 sentences]`）。
+**AI**:
+1. **读取真实技术栈**：从 `pom.xml`（Java 版本、Spring Boot 版本、模块列表、数据库驱动）、`package.json`（框架、UI 库、构建/测试命令）提取信息。
+2. **批量填充占位符**：用脚本替换 `openspec/project.md`、各栈 `AGENTS.md` + `CLAUDE.md`（两者须镜像一致）、根 `AGENTS.md` 中的 `[fill]`、`[e.g. ...]`、`[one-line business description]` 等占位符。
+3. **修正 verify.config.yaml**：根据实际技术栈调整 build/test 命令。例如：
+   - ops_wechat 有 vitest -> `test: pnpm test:run`（非 `null`）
+   - ops_wechat 构建目标是微信小程序 -> `build: pnpm build:mp`（非 `pnpm build`）
+4. **修正 workset 名称**：根 `AGENTS.md` 中的 `openspec workset open` 命令使用 kebab-case 项目名。
 
-> 同时检查 `openspec/verify.config.yaml` 的 build/test 命令是否符合实际技术栈（默认 backend=`mvn compile`，frontend=`pnpm build`，如有差异手动改）。
+### 对话 3 · 审计校验（AI 主动执行）
 
-### 对话 3 · 审计校验
+> AI 在填充完成后主动执行审计。
 
-**用户**:
-> 审计 `./myproject` 合规度。
-
-**AI**:跑 `./scaffold.sh check .`（快速审计）。要更细则进 skill audit 模式跑全量 33 项，给出成熟度等级 + 修复清单。
-
-> **`check` 是 Codex-aware 的**:E3 探测根 `AGENTS.md`、E4 探测前端 `AGENTS.md` 的设计指引、H9 探测 `AGENTS.md` 里的 sandbox/approval 关键词;S4/S5/S6/S8 同理--`.claude/` 路径只是 Claude 的可选加分项。纯 Codex 项目只要 `AGENTS.md` 写到位,这些项都能 PASS。
+**AI**:
+1. 跑 `./scaffold.sh check .`（快速审计）。
+2. 跑 `./scaffold.sh tokens .`（token 审计：确认自动加载文件全英文、单文件 ≤3000 tokens）。
+3. 输出已知问题清单 + 优先级建议，例如：
+   - Superpowers 纪律已写入 AGENTS.md 但技能未安装 -> brainstorm/plan/review 靠 AI 遵循指令
+   - 项目根非 git 仓库 -> worktree 隔离不可用
+   - hooks 为 echo 桩 -> 需替换为真实 lint/format 闸门
+   - specs/*.md 为模板骨架 -> 随首个 `$openspec-propose` 逐步填充
 
 ### 对话 4 · 开始第一个功能（进入 Loop 循环）
 
