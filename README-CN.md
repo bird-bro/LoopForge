@@ -37,7 +37,7 @@ LoopForge 围绕工业级三层范式 **OpenSpec + Superpowers + Harness**构建
 - **33 项审计**诊断每个老项目缺什么(spec?测试?Agent 分离?构建验证?)
 - **重构模式**将单体 `CLAUDE.md`/`AGENTS.md` 拆分为按栈分离的 Agent,不破坏现有代码
 - **Legacy 感知 TDD**(特征化测试 + 债务登记)让你安全修改无测试代码,不用卡死
-- **跨栈协调**(OpenSpec initiatives + context-store)让一人团队也能编排前后端跨仓库变更
+- **跨栈协调**(LoopForge coordination docs + workset + OpenSpec `--goal` tags)让一人团队也能编排前后端跨仓库变更
 - **SDD(子代理驱动开发)**逐任务分派 implementer/reviewer 子代理,防止同时处理多项目时上下文膨胀
 - **编译门禁验证**通过 `openspec/verify.config.yaml`--本地 `/opsx:verify` 的 L1 构建检查确认每个栈编译通过后再 push;三层验证产出 `verify.md` 凭证作为归档门禁
 
@@ -54,7 +54,7 @@ LoopForge 和 spec-superflow 的差异在于**场景适配**：
 | 自包含 | ✅ 源码级融合 | ❌ 依赖 OpenSpec CLI（CC 版还依赖 Superpowers） |
 | Token 效率 | 系统化基线（-60.3%） | 逐文件预算门禁 |
 | 老项目迁移 | ❌ 无 | ✅ 审计 -> 重构 -> 特征化测试 -> 债务登记 |
-| 跨栈编排 | ❌ 无 | ✅ per-stack agents + initiatives |
+| 跨栈编排 | ❌ 无 | ✅ per-stack agents + coordination docs |
 | 编译门禁验证 | ❌ 无 | ✅ verify.config L1 build 检查 + verify.md |
 
 **spec-superflow（通用方案）：** 全新项目、多人协作、多平台工具链、已有测试基线的项目，以及任何需要严格"规划→执行"一致性的场合。它的工程化质量 —— 类型化 Schema、有单测的门禁、可独立测试的 skill —— 确实出色，我们无意声称能比肩。

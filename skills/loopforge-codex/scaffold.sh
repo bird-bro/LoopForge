@@ -172,7 +172,7 @@ generate_scaffold() {
   # LoopForge layers these on so the documented loop (propose->apply->verify->archive) is real.
   echo "==> Layering LoopForge runtime enhancements (verify config + report template; Claude commands + Codex skills)"
   # Capture verify body once — shared between Claude slash command and Codex skill.
-  # openspec init (v1.4.1) generates propose/apply/archive/explore/sync only — NO verify
+  # openspec init (v1.6.0) generates propose/apply/archive/explore/sync only - NO verify
   # command/skill in any --tools mode. LoopForge creates it for both Claude and Codex.
   _LOOP_VERIFY_BODY=$(mktemp)
   cat > "$_LOOP_VERIFY_BODY" <<'__LOOPFORGE_VERIFY_BODY__'
@@ -219,10 +219,10 @@ Three-layer verification for an OpenSpec change. Confirms the implementation act
    Parse the JSON for:
    - `changeRoot` — where to write `verify.md`
    - `artifactPaths.specs.existingOutputPaths` — delta spec files holding the WHEN/THEN scenarios (the L2 source of truth)
-   - `planningHome` — to locate `verify.config.yaml` (see step 4) and per-stack `CLAUDE.md`
-   - `actionContext.allowedEditRoots` / stack hints — which stacks are affected
+   - `root.path` (or `actionContext.allowedEditRoots[0]`) - project root, to locate `openspec/verify.config.yaml` (see step 4) and per-stack `CLAUDE.md`
+   - `actionContext.allowedEditRoots` / stack hints - which stacks are affected
 
-   **Workspace guard:** If status reports `actionContext.mode: "workspace-planning"`, explain that workspace verification is not supported in this slice and STOP. Do not run builds against linked repos.
+   **Scope guard:** `actionContext.mode` is `repo-local` for normal changes (OpenSpec 1.6.0 removed the `workspace-planning` mode). If a change spans multiple stacks, identify all affected stacks from `allowedEditRoots`, the change's `design.md`, or `tasks.md` stack tags - do not run builds against stacks the change does not touch.
 
 3. **Validate artifacts first (fail fast)**
 
@@ -596,14 +596,14 @@ After the change is moved to `archive/`, sync its delta specs into the main spec
    - **Modified scenarios**: replace the old version, keep the scenario name.
    - **Removed scenarios**: mark `~~deprecated~~` (do not delete - preserve history).
 3. Add a `<!-- synced from: <change-name> <date> -->` comment at each merge point.
-4. If `openspec sync` CLI is available, run it for mechanical merge assistance.
+4. `openspec archive` already updates main specs on archive (OpenSpec 1.6.0); the `openspec-sync-specs` skill can assist with manual merge review. (The standalone `openspec sync` CLI was removed in 1.6.0.)
 5. Verify no conflicts: same scenario name with different WHEN/THEN in main spec -> warn user.
 This ensures the main specs always reflect what was actually built, not what was planned.
 <!-- /LoopForge: verify-gate-archive -->
 __LT__
 )
 
-  # Inject into v1.4.1 openspec-* skills (primary targets)
+  # Inject into openspec init's openspec-* skills (primary targets)
   printf '%s\n' "$_trig_propose" | inject_after_frontmatter .codex/skills/openspec-propose/SKILL.md '<!-- LoopForge: superpowers-trigger-propose -->'
   printf '%s\n' "$_trig_apply"   | inject_after_frontmatter .codex/skills/openspec-apply-change/SKILL.md '<!-- LoopForge: superpowers-trigger-apply -->'
   printf '%s\n' "$_trig_archive" | inject_after_frontmatter .codex/skills/openspec-archive-change/SKILL.md '<!-- LoopForge: verify-gate-archive -->'
@@ -738,7 +738,7 @@ EOF
 - [stack names; or "single-stack: <name>"]
 
 ## Depends-On
-- [linked change ids or initiative id; or "none — standalone"]
+- [linked change ids or cross-stack `--goal` tag; or "none - standalone"]
 
 ## Scope
 - In scope: [list]
@@ -1728,26 +1728,78 @@ EOF
   if has frontend;        then mkdir -p "$FRONTEND_DIR"; gen_agent frontend        "$FRONTEND_DIR" "$(label_for frontend)";       touch "$FRONTEND_DIR/.gitkeep"; fi
   if has frontend-mobile; then mkdir -p "$MOBILE_DIR";   gen_agent frontend-mobile "$MOBILE_DIR"   "$(label_for frontend-mobile)"; touch "$MOBILE_DIR/.gitkeep"; fi
 
-  # ---------- 3b. Multi-stack coordination layer (workspace + context-store) ----------
-  # For >=2 stacks, register a coordination workspace + context-store so cross-stack
-  # features are tracked by an initiative (parent) linking per-repo changes (children).
+  # ---------- 3b. Multi-stack coordination layer (OpenSpec 1.6.0) ----------
+  # OpenSpec 1.6.0 removed workspace/context-store/initiative. Cross-stack coordination is now a
+  # LoopForge-managed convention built on 1.6.0 primitives (each stack is a subdir of one OpenSpec root):
+  #   - openspec/coordination/<feature>.md : shared "parent" (design/decisions + per-stack change registry)
+  #   - openspec new change <name> --goal "<feature>" : per-stack change soft-tagged to the feature
+  #   - openspec workset : group all stack dirs to open them together (IDE; agent open is temporarily
+  #     disabled in 1.6.0 - launch codex/claude manually in the project root for a coordinator session)
   # Without this, a cross-stack feature's "declared dependency" has no home and is lost.
   if [[ $RUN_INIT -eq 1 ]] && command -v openspec >/dev/null 2>&1; then
     _nstacks=$(awk -F, '{print NF}' <<<"$STACKS")
     if [[ $_nstacks -ge 2 ]]; then
       echo "==> Multi-stack detected ($_nstacks stacks): setting up coordination layer"
-      _cs="$PROJECT_NAME-store"
-      openspec context-store setup "$_cs" >/dev/null 2>&1 \
-        || echo "  warn: context-store setup failed (maybe exists); manual: openspec context-store setup $_cs"
-      _links=""
+      # Shared coordination doc = the "parent" home for cross-stack features (CLI-safe: not parsed
+      # by openspec list/validate/context).
+      mkdir -p openspec/coordination
+      cat <<'__COORD_README__' | subst | write_if_absent openspec/coordination/README.md
+# Cross-Stack Coordination (LoopForge convention for OpenSpec 1.6.0)
+
+> OpenSpec 1.6.0 removed `workspace`/`context-store`/`initiative`. This directory is the
+> LoopForge-managed replacement for the "parent" that tracks a cross-stack feature across
+> per-stack changes. It is plain documentation - the openspec CLI does not parse it.
+
+## How a cross-stack feature works
+1. **Create the parent** - copy `_template.md` to `<feature>.md`, fill the shared design/decisions.
+2. **Per stack** - in each stack run `openspec new change <name> --goal "<feature>"` (soft-tagged).
+3. **Register** - list each per-stack change in `<feature>.md`'s change registry table.
+4. **Gate** - the feature is done when ALL registered changes verify PASS (`openspec/verify.config.yaml`); archive each.
+
+## Open all stacks together
+```bash
+openspec workset open @@PROJECT_NAME@@ --tool code   # IDE (VS Code/Cursor). Agent open is temporarily disabled in 1.6.0.
+```
+For a coordinator agent session, launch `codex` / `claude` manually in the project root.
+
+## Separate repos (advanced)
+If stacks live in independent git repos (each its own OpenSpec root), register and address them with stores:
+`openspec store register --id <project>-<stack> <repo-path>` then `openspec new change <name> --goal "<feature>" --store <project>-<stack>`.
+__COORD_README__
+      cat <<'__COORD_TPL__' | subst | write_if_absent openspec/coordination/_template.md
+# Coordination: <feature>
+
+> Cross-stack parent. Shared design/decisions + per-stack change registry.
+> Per-stack changes are soft-tagged via `openspec new change <name> --goal "<feature>"`.
+
+## Why
+[Business reason for the cross-stack feature]
+
+## Shared Design
+[API contracts / data model / error codes negotiated across stacks - single source of truth]
+
+## Decisions
+- [Decision] - [rationale] - [date]
+
+## Change Registry
+| Stack | Change | Status | Verify |
+|:--|:--|:--|:--|
+| backend | [change name] | proposing | - |
+| frontend | [change name] | proposing | - |
+
+## Gate
+Feature done = ALL registered changes verify PASS -> archive each.
+__COORD_TPL__
+      # Workset grouping all stack code dirs (no --tool: agent open is disabled in 1.6.0; create saves cleanly).
+      _members=""
       for _s in $(echo "$STACKS" | tr ',' ' '); do
-        _links="$_links --link ${_s}=./$(dir_for "$_s")"
+        _members="$_members --member ${_s}=./$(dir_for "$_s")"
       done
       # shellcheck disable=SC2086
-      openspec workspace setup --name "$PROJECT_NAME" $_links --tools "$TOOLS" --no-interactive >/dev/null 2>&1 \
-        || echo "  warn: workspace setup failed (maybe exists); manual: openspec workspace setup --name $PROJECT_NAME $_links --tools $TOOLS"
-      echo "    context-store: $_cs  (initiatives = durable cross-repo parent live here)"
-      echo "    workspace:     $PROJECT_NAME  (stacks linked as coordinated areas)"
+      openspec workset create "$PROJECT_NAME" $_members >/dev/null 2>&1 \
+        || echo "  warn: workset create failed (maybe exists); manual: openspec workset create $PROJECT_NAME $_members"
+      echo "    coordination:  openspec/coordination/ (shared design/decisions + per-feature change registry)"
+      echo "    workset:       $PROJECT_NAME (open all stacks: openspec workset open $PROJECT_NAME --tool code)"
       echo "    cross-stack flow: see AGENTS.md \"Cross-Stack Feature\""
     fi
   fi
@@ -1809,13 +1861,13 @@ EOF
     fi
     if has backend && (has frontend || has frontend-mobile); then
       echo ""
-      echo "### Cross-Stack Feature (>=2 stacks — one initiative parent tracks all per-stack changes)"
-      echo "A cross-stack \"declared dependency\" with no parent is lost. Stable pattern:"
-      echo "1. Parent: \`openspec initiative create <feature> --store @@PROJECT_NAME@@-store --title \"...\"\`"
-      echo "2. Per stack (parallel): \`cd <stack-dir> && openspec new change <name> --initiative <feature> --store @@PROJECT_NAME@@-store\`"
-      echo "3. Implement each in its own repo (cross-domain ban unchanged; frontend mocks first); coordinate via initiative \`design.md\`/\`decisions.md\`"
-      echo "4. Gate: feature done = ALL linked changes verify PASS (\`openspec/verify.config.yaml\`) -> archive each"
-      echo "   Single-stack: skip initiative; plain \`openspec new change\`. Coordinator: \`openspec workspace open --agent <codex-cli|claude>\`."
+      echo "### Cross-Stack Feature (>=2 stacks - one coordination doc tracks all per-stack changes)"
+      echo "A cross-stack \"declared dependency\" with no parent is lost. Stable pattern (OpenSpec 1.6.0):"
+      echo "1. Parent: create \`openspec/coordination/<feature>.md\` (shared design/decisions + change registry)"
+      echo "2. Per stack (parallel): \`openspec new change <name> --goal \"<feature>\"\` (soft-tagged to the feature)"
+      echo "3. Implement each in its own stack (cross-domain ban unchanged; frontend mocks first); coordinate via the coordination doc \`design\`/\`decisions\`"
+      echo "4. Gate: feature done = ALL registered changes verify PASS (\`openspec/verify.config.yaml\`) -> archive each"
+      echo "   Single-stack: skip coordination; plain \`openspec new change\`. Open all stacks: \`openspec workset open @@PROJECT_NAME@@ --tool code\`."
     fi
     echo ""
     echo "### AI Coding Rules"
@@ -1884,12 +1936,12 @@ EOF
 4. 归档 → `openspec archive <名字>`，检查 `verify.md` 门禁后归档
 
 ## 跨栈功能协调（前后端联动）
-当一个功能跨多个栈（如前端+后端分属独立仓库），单栈 change 不够——前端 agent 按跨域禁令正确排除后端，但"声明的后端依赖"没有归属会被静默丢失（没人创建对应的兄弟 change）。OpenSpec 1.4.1 原生解决，脚手架已为 ≥2 栈自动建好：
-- **context-store**（`<项目>-store`）+ **workspace**（各仓库注册为协调区域）已自动建立
-- **父级 initiative**：`openspec initiative create <功能> --store <项目>-store` —— 跨仓库持久意图（需求/设计/决策/任务），即"子流程"的父
-- **子级 change**：各仓库 `openspec new change <名> --initiative <功能> --store <项目>-store`，挂到父级（`openspec status` 可见链接）
-- **完成门禁**：所有挂载的 change 都 verify PASS → 功能才算完 → 各自归档
-- **协调会话**：`openspec workspace open --agent <codex-cli|claude>`（中立地，不写领域代码，只做跨栈 verify 收口）
+当一个功能跨多个栈（如前端+后端分属独立仓库），单栈 change 不够--前端 agent 按跨域禁令正确排除后端，但"声明的后端依赖"没有归属会被静默丢失（没人创建对应的兄弟 change）。OpenSpec 1.6.0 移除了原生 initiative/workspace，脚手架改用 LoopForge 约定，已为 ≥2 栈自动建好：
+- **协调文档**（`openspec/coordination/`）已自动建立 -- 跨栈"父级"（共享设计/决策 + 各栈 change 登记表），CLI 不解析
+- **子级 change**：各栈 `openspec new change <名> --goal "<功能>"`，用 `--goal` 软标签关联到功能
+- **登记**：把各栈 change 填进 `openspec/coordination/<功能>.md` 的登记表
+- **完成门禁**：所有登记的 change 都 verify PASS -> 功能才算完 -> 各自归档
+- **协调会话**：`openspec workset open <项目> --tool code`（IDE 打开所有栈；1.6.0 暂时禁用 agent 直接打开，需手动在项目根启动 codex/claude）
 
 ## 约定速记
 - 先 spec 后代码：没有 spec 不写代码

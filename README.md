@@ -37,7 +37,7 @@ Both editions scaffold, audit, and restructure a project's AI-collaboration stru
 - **33-check audit** to diagnose what each legacy project is missing (specs? tests? agent separation? build verification?)
 - **Restructure mode** to split a monolithic `CLAUDE.md`/`AGENTS.md` into per-stack agents without disrupting existing code
 - **Legacy-aware TDD** (characterization tests + debt logging) so you can safely modify untested code without freezing
-- **Cross-stack coordination** (OpenSpec initiatives + context-store) so a one-person team can orchestrate frontend + backend changes across separate repos
+- **Cross-stack coordination** (LoopForge coordination docs + workset + OpenSpec `--goal` tags) so a one-person team can orchestrate frontend + backend changes across separate repos
 - **SDD (Subagent-Driven Development)** to dispatch implementer/reviewer subagents per task, preventing context bloat when juggling multiple projects
 - **Compile-gated verification** via `openspec/verify.config.yaml` -- the local `/opsx:verify` L1 build check confirms each stack compiles before push. The three-layer verify produces a `verify.md` credential that gates archival
 
@@ -54,7 +54,7 @@ The differences are about **fit for the scenario, not superiority**:
 | Self-contained | ✅ source-level fusion | ❌ depends on OpenSpec CLI (+ Superpowers for CC) |
 | Token efficiency | systematic baseline (-60.3%) | per-file budget gates |
 | Legacy migration | ❌ none | ✅ audit -> restructure -> characterization tests -> debt logging |
-| Cross-stack orchestration | ❌ none | ✅ per-stack agents + initiatives |
+| Cross-stack orchestration | ❌ none | ✅ per-stack agents + coordination docs |
 | Compile-gated verification | ❌ none | ✅ verify.config L1 build check + verify.md |
 
 **Where spec-superflow is the better choice (and we'd recommend it without hesitation):** greenfield projects, multi-person teams, multi-platform toolchains, projects with an existing test baseline, and anywhere strict planning→execution consistency matters. Its engineering quality — typed schemas, unit-tested gates, independently testable skills — is genuinely impressive, and we make no claim to match it.

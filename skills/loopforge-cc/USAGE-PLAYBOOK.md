@@ -116,7 +116,7 @@
 
 ## 场景四:跨栈功能协调(前后端联动)
 
-当一个功能跨多个栈(如前端小程序 + 后端 Java,分属独立 git 仓库),单栈 change 不够:前端 agent 按跨域禁令正确排除后端,但"声明的后端依赖"没有归属,会被静默丢失(没人创建对应的兄弟 change)。scaffold.sh 对 ≥2 栈已自动建好协调层(context-store + workspace),用 OpenSpec 1.4.1 原生的 **initiative(父级)+ per-stack change(子级)** 模式解决。
+当一个功能跨多个栈(如前端小程序 + 后端 Java,分属独立 git 仓库),单栈 change 不够:前端 agent 按跨域禁令正确排除后端,但"声明的后端依赖"没有归属,会被静默丢失(没人创建对应的兄弟 change)。scaffold.sh 对 ≥2 栈已自动建好协调层(`openspec/coordination/` + workset),用 LoopForge 约定的 **协调文档(父级)+ per-stack change(子级,`--goal` 软标签)** 模式解决(OpenSpec 1.6.0 已移除原生 initiative/workspace)。
 
 ### 对话 · 跨栈功能
 
@@ -124,28 +124,29 @@
 > 技师任务详情页:前端小程序(ops_wechat)要调后端(ops_sev)的新接口。前端先做,后端另开提案。
 
 **AI**:
-1. **建父级 initiative**(跨仓库持久意图,= "子流程"的父):
+1. **建父级协调文档**(跨栈持久意图,= "子流程"的父):
    ```bash
-   openspec initiative create task-flow --store ops-store --title "技师任务详情/历史全链路"
+   cp openspec/coordination/_template.md openspec/coordination/task-flow.md
+   # 填 shared design/decisions + change 登记表;这是跨栈"父级",CLI 不解析
    ```
-2. **前端 change**(ops_wechat 仓库内,挂到父级):
+2. **前端 change**(ops_wechat 仓库内,软标签挂到父级):
    ```bash
    cd ops_wechat
-   openspec new change wechat-task-detail --initiative task-flow --store ops-store
+   openspec new change wechat-task-detail --goal "task-flow"
    # proposal.md "后端依赖"节声明所需接口(POST /api/wechat/task/detail 等)
    # Scope Out: 后端接口实现(由 Backend Agent 另行提案)
    ```
-3. **后端 change**(ops_sev 仓库内,兄弟提案):
+3. **后端 change**(ops_sev 仓库内,兄弟提案,同一 --goal):
    ```bash
    cd ops_sev
-   openspec new change sev-task-detail-api --initiative task-flow --store ops-store
+   openspec new change sev-task-detail-api --goal "task-flow"
    # proposal.md 实现前端声明的接口
    ```
-4. **各自实现**(跨域禁令不变;前端 mock 优先)→ 各自 `/opsx:verify` → 各自 `/opsx:archive`
-5. **完成门禁**:`openspec status` 可见两个 change 都挂载到同一 initiative;全部 verify PASS → 功能才算完
+4. **各自实现**(跨域禁令不变;前端 mock 优先)-> 各自 `/opsx:verify` -> 各自 `/opsx:archive`
+5. **完成门禁**:在 `openspec/coordination/task-flow.md` 登记表里确认两个 change 都 verify PASS -> 功能才算完
 
-> 协调会话(中立地,不写领域代码):`openspec workspace open --agent claude`
-> 跨栈的接口契约/设计决策放在 initiative 的 `design.md` / `decisions.md` 里,双方共享。
+> 协调会话(中立地,不写领域代码):`openspec workset open <项目> --tool code` 打开所有栈;1.6.0 暂时禁用 agent 直接打开,需手动在项目根启动 claude。
+> 跨栈的接口契约/设计决策放在 `openspec/coordination/task-flow.md` 的 `design`/`decisions` 里,双方共享。
 
 ---
 
@@ -168,40 +169,41 @@
 ```
 用户:"技师任务详情页,前端调后端新接口"
   │
-  ├─ 1. Coordinator 建父级 initiative(task-flow)
-  │     → 跨仓库持久意图,记录在 ops-store
+  ├─ 1. Coordinator 建父级协调文档(task-flow.md)
+  │     -> 跨栈持久意图,记录在 openspec/coordination/
   │
   ├─ 2. 前端会话(ops_wechat 仓库)
-  │     ├─ Frontend Agent 提案 wechat-task-detail
+  │     ├─ Frontend Agent 提案 wechat-task-detail(--goal "task-flow")
   │     │   proposal.md "后端依赖"节声明:POST /api/wechat/task/detail
   │     ├─ Frontend Agent 实现(mock 优先):
   │     │   - 先用 mock 数据跑通页面逻辑(不阻塞等后端)
   │     │   - mock 接口签名 = proposal 声明的接口契约
   │     │   - 后端就绪后,删 mock 换真实调用(一行 diff)
-  │     └─ /opsx:verify → reviewer 审计前端实现 vs spec WHEN/THEN
+  │     └─ /opsx:verify -> reviewer 审计前端实现 vs spec WHEN/THEN
   │
   ├─ 3. 后端会话(ops_sev 仓库)
-  │     ├─ Backend Agent 提案 sev-task-detail-api(兄弟提案)
+  │     ├─ Backend Agent 提案 sev-task-detail-api(兄弟提案,--goal "task-flow")
   │     │   实现前端声明的接口,签名必须与 proposal 一致
-  │     ├─ Backend Agent TDD:Red(失败测试)→ Green(最小实现)→ Refactor
-  │     └─ /opsx:verify → reviewer 审计后端实现 vs spec WHEN/THEN
+  │     ├─ Backend Agent TDD:Red(失败测试)-> Green(最小实现)-> Refactor
+  │     │   (无测试运行器时:特征化测试 或 debt.md 登记)
+  │     └─ /opsx:verify -> reviewer 审计后端实现 vs spec WHEN/THEN
   │
   ├─ 4. 集成验证
-  │     ├─ 前端删 mock → 接真实后端
-  │     ├─ Coordinator 检查:两个 change 都挂载到 initiative task-flow
-  │     └─ 全部 verify PASS → 功能才算完
+  │     ├─ 前端删 mock -> 接真实后端
+  │     ├─ Coordinator 检查:task-flow.md 登记表里两个 change 都 verify PASS
+  │     └─ 全部 verify PASS -> 功能才算完
   │
   └─ 5. 归档
-        各自 /opsx:archive → 移入 openspec/archive/
+        各自 /opsx:archive -> 移入 openspec/archive/
 ```
 
 #### 接口契约共享
 
-跨栈的接口契约和设计决策放在 initiative 的 `design.md` / `decisions.md` 里,双方共享:
+跨栈的接口契约和设计决策放在 `openspec/coordination/<feature>.md` 的 `design` / `decisions` 里,双方共享:
 
 - **前端先声明** -> `proposal.md` 的"后端依赖"节写明接口路径、方法、请求/响应结构
 - **后端照此实现** -> 兄弟提案的 spec.md 中 WHEN/THEN 对齐前端声明
-- **有分歧时** -> Coordinator 开协调会话(`openspec workspace open --agent claude`),在中立 workspace 里讨论,更新 `decisions.md`,双方各自 rewind 修改提案
+- **有分歧时** -> Coordinator 开协调会话(`openspec workset open <项目> --tool code`,手动启动 claude),讨论后更新协调文档的 `decisions`,双方各自 rewind 修改提案
 
 #### Mock 优先原则
 
@@ -253,8 +255,8 @@
 - **execution-contract.md** 定义每个栈的任务批次和栈间依赖
 - **前端 implementer** 先 mock API(`openspec/specs/api/spec.md`),不阻塞等后端
 - **后端 implementer** 按同一 spec 实现
-- **Coordinator** 通过 `openspec/sdd/progress.md` 和 initiative 父级(`openspec status`)跟踪两个栈的进度
-- **跨栈门禁**:所有挂载的 change 都 verify PASS,功能才算完成
+- **Coordinator** 通过 `openspec/sdd/progress.md` 和协调文档登记表(`openspec/coordination/<feature>.md`)跟踪两个栈的进度
+- **跨栈门禁**:所有登记的 change 都 verify PASS,功能才算完成
 
 #### 实操演练:一人团队用 SDD 做跨栈功能(前后端分离)
 
