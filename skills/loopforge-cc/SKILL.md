@@ -257,6 +257,37 @@ Project map + business context (1-3 sentences) + tech-stack table + development 
 | No dangerous-command deny | Add `rm -rf`, `git push --force` to permissions.deny |
 | specs/ at root level | Move to `openspec/specs/` (unified entry) |
 
+
+## Audit Check Notes (33-check full audit)
+
+> The CLI `check` (25 items) is automatable. The full 33-check audit is AI-driven
+> (SKILL.md audit mode). These notes guide the AI's judgment on nuanced checks.
+
+### H4: Git worktree isolation
+- **Multi-repo workspace** (root is NOT a git repo, but each stack subdir is its own repo):
+  This is a **valid pattern**, not a failure. Report as **WARN** (not FAIL):
+  "Multi-repo workspace: worktree isolation operates per-stack (inside each subdir),
+  not at workspace root. ensure-branch.sh handles this gracefully (exits 0 with warning)."
+- **Single repo**: PASS if `git rev-parse --is-inside-work-tree` succeeds.
+- **No git at all**: WARN (not FAIL) - "No git repo: version control recommended but
+  not blocking for scaffold/audit phase."
+
+### S7/H10: Hooks
+- The scaffold generates **echo stubs** by design in `.claude/settings.json`:
+  `SessionStart`, `PreToolUse` (Edit|Write), `Stop`. These are **placeholders** for
+  the user to replace with real quality gates (e.g. `pnpm lint`, `mvn -q compile`).
+- Report as **PASS (stub)**: "Hooks configured (echo stubs). Replace with real
+  lint/format/build gates when project is ready for CI enforcement."
+- Only report FAIL if `.claude/settings.json` has no hooks section at all.
+
+### H3: Mock-first practice
+- The scaffold template mentions MSW (Mock Service Worker) as one option.
+- **Any mock solution counts as PASS**: MSW, mockjs, vite-plugin-mock-dev-server,
+  axios-mock-adapter, nock, etc.
+- Check for mock usage in frontend `package.json` dependencies or source code.
+- Report FAIL only if no mock mechanism exists AND no real API calls are wired.
+
+
 ## Verification Checklist
 
 - [ ] Auto-loaded files are English

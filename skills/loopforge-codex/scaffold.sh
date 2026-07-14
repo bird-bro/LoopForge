@@ -2151,12 +2151,19 @@ PY
   # S5 - domain guidance: per-stack AGENTS.md carries deep guidance (Codex); .claude/skills/ if Claude.
   local _s5_ag=0 _s5_cl=0 _s5_super=0 _s5d _s5n
   while IFS= read -r _; do _s5_ag=$((_s5_ag+1)); done < <(find . -mindepth 2 -maxdepth 2 -name AGENTS.md -not -path './openspec/*' -not -path './.claude/*' 2>/dev/null)
+  # Check project-level .claude/skills/ AND user-level plugin cache
   while IFS= read -r _s5d; do
     _s5_cl=$((_s5_cl+1)); _s5n="$(basename "$_s5d")"
     case "$_s5n" in
       brainstorming|writing-plans|executing-plans|requesting-code-review|receiving-code-review|verification-before-completion|using-superpowers|test-driven-development|systematic-debugging|subagent-driven-development|dispatching-parallel-agents|using-git-worktrees|finishing-a-development-branch|writing-skills) _s5_super=$((_s5_super+1));;
     esac
   done < <(find .claude/skills -mindepth 1 -maxdepth 1 -type d ! -name 'openspec-*' 2>/dev/null)
+  # Also check user-level plugin cache (Superpowers may be installed as plugin, not copied to project)
+  if [[ $_s5_super -eq 0 ]]; then
+    for _p in "$HOME/.claude/plugins/cache"/*/superpowers/*/skills "$HOME/.codex/plugins/cache"/*/superpowers/*/skills; do
+      [[ -d "$_p/brainstorming" ]] && { _s5_super=1; break; }
+    done
+  fi
   if [[ $_s5_ag -gt 0 || $_s5_super -gt 0 ]]; then report PASS "S5 domain guidance (per-stack AGENTS.md: $_s5_ag${_s5_super:+; Superpowers: $_s5_super})"
   else report PARTIAL "S5 domain guidance (add deep guidance to per-stack AGENTS.md${_s5_cl:+; or install Superpowers skills for Claude})"; fi
 
