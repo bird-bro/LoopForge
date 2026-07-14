@@ -78,6 +78,7 @@ cd ./myproject
 - 自动跑 `openspec init --tools codex`，生成 `openspec/`、`.codex/skills/`、根 `AGENTS.md`（含 `[fill]` 占位符）、各栈 `AGENTS.md` + `CLAUDE.md`
 
 4. **创建 workset**（多栈项目）：`openspec workset create <kebab-case-name> --member backend=./ops_sev --member frontend=./ops_web --member frontend-mobile=./ops_wechat`（项目名自动转 kebab-case）。
+5. **自动安装 Superpowers 技能**：从用户级插件缓存（`~/.claude/plugins/cache/.../superpowers/`）复制 brainstorming / writing-plans / executing-plans / requesting-code-review / verification-before-completion / test-driven-development / systematic-debugging 到 `.claude/skills/`。若插件未安装则提示用户安装。
 
 > 如果项目已有 `openspec/`，加 `--no-init` 跳过初始化。
 > 详细的参数说明和排错见下方「scaffold.sh 参数与排错指南」。
