@@ -1705,13 +1705,13 @@ You are a **$label**. Your scope: UI, components, state, API integration.
 - **Stack**: [e.g. Vue 3 + Vite + Element Plus (web) / Vant (mobile)]
 
 ## Before You Code
-1. Read \`../openspec/specs/api/spec.md\` - mock from it (MSW), do not invent endpoints
+1. Read \`../openspec/specs/api/spec.md\` - mock from it (any mock tool), do not invent endpoints
 2. Read \`../openspec/specs/errors/spec.md\` - handle every error code
 3. Check \`../openspec/changes/\` for active proposals
 4. If no spec exists, run \`openspec new change <name>\` first - never code without a spec
 
 ## Mock-First
-- Mock APIs from \`../openspec/specs/api/spec.md\` (MSW)
+- Mock APIs from \`../openspec/specs/api/spec.md\` (any mock tool: MSW / mockjs / vite-plugin-mock / etc.)
 - UI prototype → **user confirms** → then implement (openspec-driven)
 
 ## Module Structure
@@ -2289,7 +2289,7 @@ cmd_list() {
       --mobile-dir)    MOBILE_DIR="$2"; shift 2;;
       --dir|--tools|--no-init) shift 2 2>/dev/null || shift;;  # ignored (list uses temp dir)
       -h|--help)       echo "Usage: scaffold.sh list [--stacks <list>] [--backend-dir <n>] [--frontend-dir <n>] [--mobile-dir <n>]"; exit 0;;
-      *) echo "list: unknown arg: $1" >&2; exit 1;;
+      *) shift;;  # silently consume positional args (e.g. project name)
     esac
   done
   local tmp; tmp="$(mktemp -d)"

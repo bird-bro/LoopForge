@@ -1659,14 +1659,19 @@ __LF_SDD_PROG__
 EOF
   echo "  note: replace hook placeholder commands with real scripts (e.g. lint/format gates)."
 
-  cat <<'EOF' | write_if_absent .claude/rules/naming.md
+  # Build globs dynamically from configured stack dirs
+  _globs=""
+  has backend && _globs="\"${BACKEND_DIR}/**\""
+  has frontend && _globs="${_globs:+$_globs, }\"${FRONTEND_DIR}/**\""
+  has frontend-mobile && _globs="${_globs:+$_globs, }\"${MOBILE_DIR}/**\""
+  cat <<EOF | write_if_absent .claude/rules/naming.md
 ---
-globs: ["backend/**", "frontend-web/**", "frontend-mobile/**"]
+globs: [$_globs]
 ---
 <!-- auto-loaded: English only. Human notes: docs/GUIDE.zh.md -->
 # Naming Conventions (shared)
 
-- File names: kebab-case (`user-service.ts`)
+- File names: kebab-case (\`user-service.ts\`)
 - [Add stack-specific rules in per-stack CLAUDE.md; only truly universal rules here]
 EOF
   touch .claude/rules/.gitkeep .claude/skills/.gitkeep .claude/commands/.gitkeep
@@ -1796,13 +1801,13 @@ You are a **$label**. Your scope: UI, components, state, API integration.
 - **Stack**: [e.g. Vue 3 + Vite + Element Plus (web) / Vant (mobile)]
 
 ## Before You Code
-1. Read \`../openspec/specs/api/spec.md\` - mock from it (MSW), do not invent endpoints
+1. Read \`../openspec/specs/api/spec.md\` - mock from it (any mock tool), do not invent endpoints
 2. Read \`../openspec/specs/errors/spec.md\` - handle every error code
 3. Check \`../openspec/changes/\` for active proposals
 4. If no spec exists, run \`/opsx:propose\` first - never code without a spec
 
 ## Mock-First
-- Mock APIs from \`../openspec/specs/api/spec.md\` (MSW)
+- Mock APIs from \`../openspec/specs/api/spec.md\` (any mock tool: MSW / mockjs / vite-plugin-mock / etc.)
 - UI prototype via \`frontend-design\` skill → **user confirms** → then \`/opsx:apply\`
 
 ## Module Structure
@@ -2370,7 +2375,7 @@ cmd_list() {
       --mobile-dir)    MOBILE_DIR="$2"; shift 2;;
       --dir|--tools|--no-init) shift 2 2>/dev/null || shift;;  # ignored (list uses temp dir)
       -h|--help)       echo "Usage: scaffold.sh list [--stacks <list>] [--backend-dir <n>] [--frontend-dir <n>] [--mobile-dir <n>]"; exit 0;;
-      *) echo "list: unknown arg: $1" >&2; exit 1;;
+      *) shift;;  # silently consume positional args (e.g. project name)
     esac
   done
   local tmp; tmp="$(mktemp -d)"

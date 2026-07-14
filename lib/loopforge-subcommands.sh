@@ -51,7 +51,7 @@ cmd_list() {
       --mobile-dir)    MOBILE_DIR="$2"; shift 2;;
       --dir|--tools|--no-init) shift 2 2>/dev/null || shift;;  # ignored (list uses temp dir)
       -h|--help)       echo "Usage: scaffold.sh list [--stacks <list>] [--backend-dir <n>] [--frontend-dir <n>] [--mobile-dir <n>]"; exit 0;;
-      *) echo "list: unknown arg: $1" >&2; exit 1;;
+      *) shift;;  # silently consume positional args (e.g. project name)
     esac
   done
   local tmp; tmp="$(mktemp -d)"
