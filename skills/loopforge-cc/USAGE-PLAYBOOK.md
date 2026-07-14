@@ -1,6 +1,6 @@
-# loopforge-cc 对话剧本 · 新项目 & 老项目操作手册
+# loopforge-cc 对话剧本 · 首次接入 & 老项目重构操作手册
 
-> 本手册以「**用户说 → AI 做**」的对话形式,说明在新项目和老项目中如何用 `loopforge-cc` skill 搭建 / 接入 Loop 工程(OpenSpec + Superpowers + Harness)。
+> 本手册以「**用户说 → AI 做**」的对话形式,说明在已有项目（无 CLAUDE.md 首次接入 / 有 CLAUDE.md 重构）中如何用 `loopforge-cc` skill 接入 Loop 工程(OpenSpec + Superpowers + Harness)。
 >
 > 三种触发方式:① **直接跑 CLI**(`scaffold.sh`);② **自然语言让 AI(Claude)代劳**——AI 会调用对应 skill 模式或 CLI;③ **Claude Code 直接 `/loopforge-cc`**——skill 装在 `~/.claude/skills/loopforge-cc/`(或项目 `.claude/skills/`)后即可用,激活后再说明任务(scaffold/audit/restructure),模式由意图自动判定。
 >
@@ -21,43 +21,49 @@
 
 ---
 
-## 场景一:新项目(从零搭建)
+## 场景一:已有代码，无 CLAUDE.md（首次接入）
 
-### 对话 1 · 生成脚手架
+> 最常见的初始场景：项目已有代码目录（如 ops_sev/、ops_web/），但还没有 CLAUDE.md、openspec/ 或 .claude/。
+
+### 对话 1 · 生成框架
 
 **用户**:
-> 新项目 myapp,技术栈后端 Spring Boot 3 + 前端 Vue3,搭一个 loop 工程框架,放到 `./myapp`。
+> 项目在 `./myproject`，后端目录 `ops_sev`（Java/Spring），前端目录 `ops_web`（Vue3），没有 CLAUDE.md 也没有 openspec/，帮我接入 loop 工程。
 
-**AI**:确认技术栈后执行:
+**AI**:确认目录名后执行（**三个 flag 缺一不可**）：
 ```bash
-./scaffold.sh myapp --stacks backend,frontend --dir ./myapp
+cd ./myproject
+./scaffold.sh myproject --dir . --backend-dir ops_sev --frontend-dir ops_web
 ```
-自动跑 `openspec init` 并生成 `openspec/`、`.claude/`、`backend/CLAUDE.md`、`frontend-web/CLAUDE.md`、根 `CLAUDE.md`。然后 AI 列出待填占位符与需另装的组件(Superpowers 技能集 `brainstorming`/`writing-plans`/`executing-plans`/`requesting-code-review`/`verification-before-completion` 复制到 `.claude/skills/`、`frontend-design` skill)。scaffold 同时生成 `CLAUDE.md`(Claude Code)与 `AGENTS.md`(Codex)双入口镜像。
+- `--dir .`：在当前目录原地生成，不创建嵌套子目录
+- `--backend-dir`/`--frontend-dir`：用真实目录名，不生成 `backend/`/`frontend-web/` 占位目录
+- 自动跑 `openspec init`，生成 `openspec/`、`.claude/`、根 `CLAUDE.md`（含 `[fill]` 占位符）、各栈 `CLAUDE.md`
 
-> CC 版 scaffold **只创建 `.claude/`**(rules / skills / agents / settings + trigger 注入),不创建 `.codex/` 目录。两版 scaffold 各管各的工具目录,不交叉创建。
-
-> 只想看不落地:`./scaffold.sh list --stacks backend,frontend`
+> 如果项目已有 `openspec/`，加 `--no-init` 跳过初始化。
+> 详细的参数说明和排错见下方「scaffold.sh 参数与排错指南」。
 
 ### 对话 2 · 填业务内容
 
 **用户**:
-> myapp 是图书借阅系统:后端 Java17 + MyBatis + MySQL8,前端 Vue3 + Element Plus。请把 `openspec/project.md` 和各栈 `CLAUDE.md` 的占位符填了。
+> myproject 是医疗体检车运营调度系统：后端 Java11 + Spring Boot 2.5 + MyBatis-Plus + PostgreSQL，前端 Vue3 + Element Plus。请把 `openspec/project.md` 和各栈 `CLAUDE.md` 的占位符填了。
 
-**AI**:读取用户提供的信息,填充 `openspec/project.md`(系统说明 / 技术栈表 / 模块图 / 架构)、`backend/CLAUDE.md` 与 `frontend-web/CLAUDE.md` 的 `[方括号]` 占位,并把业务上下文与技术栈写入根 `CLAUDE.md`。
+**AI**:读取用户提供的信息，填充 `openspec/project.md`（系统说明 / 技术栈表 / 模块图 / 架构）、`ops_sev/CLAUDE.md` 与 `ops_web/CLAUDE.md` 的 `[方括号]` 占位，并把业务上下文与技术栈写入根 `CLAUDE.md`（替换 `[fill]` 和 `[1–3 sentences]`）。
+
+> 同时检查 `openspec/verify.config.yaml` 的 build/test 命令是否符合实际技术栈（默认 backend=`mvn compile`，frontend=`pnpm build`，如有差异手动改）。
 
 ### 对话 3 · 审计校验
 
 **用户**:
-> 审计 `./myapp` 合规度。
+> 审计 `./myproject` 合规度。
 
-**AI**:跑 `./scaffold.sh check ./myapp`(快速审计,25 项 = 3 环境自检 + 22 结构合规);要更细则进 skill audit 模式跑全量 33 项(E1–E4 / O1–O8 / S1–S9 / H1–H11),给出成熟度等级 + 修复清单。
+**AI**:跑 `./scaffold.sh check .`（快速审计，25 项 = 3 环境自检 + 22 结构合规）；要更细则进 skill audit 模式跑全量 33 项，给出成熟度等级 + 修复清单。
 
-### 对话 4 · 开始第一个功能(进入 Loop 循环)
+### 对话 4 · 开始第一个功能（进入 Loop 循环）
 
-**用户**(在 `backend/` 目录起会话):
-> `/opsx:propose add-book-borrow`
+**用户**（在 `ops_sev/` 目录起会话）:
+> `/opsx:propose add-vehicle-scheduling`
 
-**AI**:自动触发 Superpowers brainstorm → 向用户澄清需求 → 写 `openspec/changes/add-book-borrow/{proposal,spec}.md`(含 WHEN/THEN)→ 用户确认后 `/opsx:apply` 按 TDD 实现 → `/opsx:verify` 三层验证(L1 构建/L2 spec 对齐/L3 测试,写 `verify.md` 凭证)→ `/opsx:archive` 凭证门禁归档。无需用户手动喊 Superpowers,斜杠命令已预置触发。
+**AI**:自动触发 Superpowers brainstorm -> 向用户澄清需求 -> 写 `openspec/changes/add-vehicle-scheduling/{proposal,spec}.md`（含 WHEN/THEN）-> 用户确认后 `/opsx:apply` 按 TDD 实现 -> `/opsx:verify` 三层验证（L1 构建/L2 spec 对齐/L3 测试，写 `verify.md` 凭证）-> `/opsx:archive` 凭证门禁归档。
 
 ---
 
@@ -100,7 +106,7 @@
 
 ## scaffold.sh 参数与排错指南
 
-> 场景一、二中的 scaffold 命令完整参数说明与常见问题排查。新项目和老项目接入都会用到。
+> 上方场景中的 scaffold 命令完整参数说明与常见问题排查。首次接入和老项目重构都会用到。
 
 ### 命令格式
 
@@ -123,11 +129,11 @@
 | `--tools <列表>` | `claude` | openspec init 工具类型 |
 | `--no-init` | （关闭）| 跳过 `openspec init`，仅生成 LoopForge 增强层 |
 
-### 新项目 vs 老项目：选对命令
+### 选对命令：scaffold vs restructure
 
 | 场景 | 命令 | 原因 |
 |:--|:--|:--|
-| 全新空目录 | `scaffold <name>` | 从零生成完整框架 |
+| 已有代码 + 无 CLAUDE.md | `scaffold <name> --dir . --backend-dir <真实名> --frontend-dir <真实名>` | 原地生成框架，CLAUDE.md 用模板（含 `[fill]` 占位） |
 | 已有代码 + 已有 CLAUDE.md | `restructure <dir>` 先分析 | scaffold 会创建占位目录；restructure 只分析不写 |
 | 已有代码 + 无 openspec/ | `scaffold <name> --dir . --backend-dir <真实名> --frontend-dir <真实名>` | 原地生成，不创建嵌套子目录 |
 | 已有 openspec/ + 缺 .claude/ | `scaffold <name> --dir . --no-init` | write_if_absent 跳过已有，只补缺失 |
@@ -216,7 +222,7 @@ scaffold 按栈类型给默认值（backend → `mvn compile -q`，frontend → 
 
 ---
 
-## 场景三:日常 Loop 循环(新 / 老通用)
+## 场景三:日常 Loop 循环
 
 每个功能都走闭环,Superpowers 由 OpenSpec 命令自动触发:
 
