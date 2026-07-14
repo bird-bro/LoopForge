@@ -32,13 +32,21 @@
 >
 > 项目在 `./myproject`，后端目录 `ops_sev`（Java/Spring），前端目录 `ops_web`（Vue3），移动端目录 `ops_wechat`（微信小程序），没有 CLAUDE.md 也没有 openspec/，帮我接入 loop 工程。
 
-**AI**:确认目录名后执行（**三个 flag 缺一不可**）：
+**AI**:先确认项目实际的目录结构和栈数量，再构建命令。本项目有 3 个栈：
+
+| 目录 | 栈类型 | flag |
+|:--|:--|:--|
+| `ops_sev` | backend | `--backend-dir ops_sev` |
+| `ops_web` | frontend | `--frontend-dir ops_web` |
+| `ops_wechat` | frontend-mobile | `--mobile-dir ops_wechat` |
+
 ```bash
 cd ./myproject
-./scaffold.sh myproject --dir . --backend-dir ops_sev --frontend-dir ops_web
+./scaffold.sh myproject --dir . --stacks backend,frontend,frontend-mobile \
+  --backend-dir ops_sev --frontend-dir ops_web --mobile-dir ops_wechat
 ```
 - `--dir .`：在当前目录原地生成，不创建嵌套子目录
-- `--backend-dir`/`--frontend-dir`：用真实目录名，不生成 `backend/`/`frontend-web/` 占位目录
+- `--stacks` 和 `--*-dir`：**根据项目实际栈数量决定**。只有后端就只传 `--backend-dir`；有移动端才加 `--mobile-dir`；不是固定要几个
 - 自动跑 `openspec init`，生成 `openspec/`、`.claude/`、根 `CLAUDE.md`（含 `[fill]` 占位符）、各栈 `CLAUDE.md`
 
 > 如果项目已有 `openspec/`，加 `--no-init` 跳过初始化。
@@ -144,12 +152,13 @@ cd ./myproject
 
 ```bash
 cd /path/to/myproject
-./scaffold.sh myproject --dir . --backend-dir ops_sev --frontend-dir ops_web
+./scaffold.sh myproject --dir . --stacks <实际栈类型> --backend-dir <后端目录名> --frontend-dir <前端目录名>
+# 有移动端则追加: --mobile-dir <移动端目录名>
 ```
 
-三个要点：
+要点：
 - **`--dir .`**：不加则创建 `./myproject/` 子目录（嵌套），把框架文件放到子目录而非项目根
-- **`--backend-dir`/`--frontend-dir`**：不加则用默认名 `backend`/`frontend-web`，创建空占位目录而非在真实代码目录内生成
+- **`--stacks` 和 `--*-dir`**：根据项目实际目录确认。不加 `--*-dir` 则用默认名 `backend`/`frontend-web`，会创建空占位目录。**先 `ls` 看项目有哪些目录，再决定传几个 flag**
 - **`--no-init`**：已有 openspec/ 时跳过 init，避免重复初始化
 
 ### 生成后的检查清单
