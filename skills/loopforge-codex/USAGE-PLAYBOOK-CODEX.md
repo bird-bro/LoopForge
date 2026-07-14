@@ -45,12 +45,16 @@
 
 ---
 
-## 场景一:已有代码，无 CLAUDE.md / AGENTS.md（首次接入）
+## 场景一:已有代码项目接入 Loop 工程（首次接入 / 重构）
 
-> 最常见的初始场景：项目已有代码目录（如 ops_sev/、ops_web/），但还没有 AGENTS.md、openspec/ 或 .codex/。
-> AI 通常一次性完成对话 1-3（scaffold + 填充 + 审计），无需用户分步指令。
+> 项目已有代码目录（如 ops_sev/、ops_web/、ops_wechat/），分两种起点：
+> - **起点 A（最常见）**：还没有 AGENTS.md、openspec/ 或 .codex/ -> 从 scaffold 生成框架
+> - **起点 B**：已有单体 AGENTS.md（或 CLAUDE.md，之前手写过）-> 审计现状 + restructure 拆分
+> AI 通常一次性完成对话 1-3，无需用户分步指令。
 
-### 对话 1 · 生成框架
+### 对话 1 · 判断起点并生成/重构框架
+
+**起点 A：无 AGENTS.md -> 生成框架**
 
 **用户**:
 `$loopforge-codex`
@@ -83,9 +87,26 @@ cd ./myproject
 > 如果项目已有 `openspec/`，加 `--no-init` 跳过初始化。
 > 详细的参数说明和排错见下方「scaffold.sh 参数与排错指南」。
 
-### 对话 2 · 填充内容（AI 主动执行）
+**起点 B：有单体 AGENTS.md -> 审计 + 拆分**
 
-> AI 在 scaffold 完成后主动执行，无需用户单独指令。
+**用户**:
+> 老项目在 `./legacy`，有个单体 `AGENTS.md`，想接入 loop 工程。先看现状。
+
+**AI**:
+1. **审计现状**：① `./scaffold.sh check`（环境自检）；② `./scaffold.sh check ./legacy`（结构合规度）；③ 进 skill audit 模式做全量 33 项审计。产出：诊断表 + 成熟度 + Top 问题 + 行动计划（按 Phase 5 顺序）。
+2. **拆分单体入口**（skill **restructure** 模式）：
+   - 读单体 `AGENTS.md`，按栈分类段落（Java 段落->backend、Vue 段落->frontend、API 路径->`openspec/specs/`、构建命令按工具分流）；
+   - 跟用户确认技术栈与目录映射；
+   - 生成各栈 `AGENTS.md`（含 Role / `NEVER` 跨域禁令 / Superpowers 五步纪律 / TDD / Build）；
+   - 重写根 `AGENTS.md` 为导航中心（≤120 行）；
+   - 删重复、校验无内容丢失、无死文件。
+
+> **`check` 是 Codex-aware 的**：E3 探测根 `AGENTS.md`、E4 探测前端 `AGENTS.md` 的设计指引、H9 探测 `AGENTS.md` 里的 sandbox/approval 关键词；S4/S5/S6/S8 同理--`.claude/` 路径（`settings.json`/`rules`/`skills`/`agents`）只是 Claude 的可选加分项。纯 Codex 项目只要 `AGENTS.md` 写到位，这些项都能 PASS，不存在 `.claude` 误报，分数如实看即可。
+> 纯 Codex：以 `AGENTS.md` 为主拆分对象；若同时用 Claude，再镜像出对应 `CLAUDE.md`。
+
+### 对话 2 · 填充内容 + 为已有代码补 spec（AI 主动执行）
+
+> AI 在框架生成/重构完成后主动执行，无需用户单独指令。
 
 **AI**:
 1. **读取真实技术栈**：从 `pom.xml`（Java 版本、Spring Boot 版本、模块列表、数据库驱动）、`package.json`（框架、UI 库、构建/测试命令）提取信息。
@@ -94,6 +115,7 @@ cd ./myproject
    - ops_wechat 有 vitest -> `test: pnpm test:run`（非 `null`）
    - ops_wechat 构建目标是微信小程序 -> `build: pnpm build:mp`（非 `pnpm build`）
 4. **修正 workset 名称**：根 `AGENTS.md` 中的 `openspec workset open` 命令使用 kebab-case 项目名。
+5. **为已有代码反向补 spec**：读现有模块代码与接口（如 user 模块），抽取为 `openspec/specs/api/spec.md`、`data/spec.md`、`errors/spec.md`（补 WHEN/THEN 场景），让 spec 成为前后端共同真相。后续改动一律走 `openspec new change` 增量，不再裸改代码。
 
 ### 对话 3 · 审计校验（AI 主动执行）
 
@@ -107,65 +129,13 @@ cd ./myproject
    - 项目根非 git 仓库 -> worktree 隔离不可用
    - hooks 为 echo 桩 -> 需替换为真实 lint/format 闸门
    - specs/*.md 为模板骨架 -> 随首个 `$openspec-propose` 逐步填充
+4. **起点 B 额外**：重构后重跑 `./scaffold.sh check ./legacy` + 全量审计，对比前后成熟度，确认：无重复、无死文件、各 agent 含必备 8 段、跨域禁令显式、根 `AGENTS.md` ≤120 行。
 
-### 对话 4 · 开始第一个功能（进入 Loop 循环）
+### 进入 Loop 前
 
-**用户**（在 `ops_sev/` 目录起会话）:
-> 给 myproject 提一个"车辆调度"功能变更，走 loop 流程。
-
-**AI**:
-1. **提案(propose)** -- 澄清需求后：
-   ```bash
-   openspec new change add-vehicle-scheduling
-   openspec instructions --change add-vehicle-scheduling
-   ```
-   填写 `proposal.md`、`spec.md`，写明 WHEN/THEN 场景。
-2. **实现(apply)** -- 按 `tasks.md` 用 TDD 实现，跨域隔离、mock 优先。
-3. **验证(verify)** -- 调 `$openspec-verify`：L1 构建 / L2 spec 对齐 / L3 测试，写 `verify.md`。
-4. **归档(archive)** -- `verify.md` 显示 `PASS` 后：`openspec archive add-vehicle-scheduling`。
-
----
-
-## 场景二:老项目(接入 / 重构)
-
-### 对话 1 · 先自检 + 审计现状
-
-**用户**:
-> 老项目在 `./legacy`,有个单体 `AGENTS.md`(或 `CLAUDE.md`),想接入 loop 工程。先看现状。
-
-**AI**:① `./scaffold.sh check`(环境自检);② `./scaffold.sh check ./legacy`(结构合规度);③ 进 skill audit 模式做全量 33 项审计。产出:诊断表 + 成熟度 + Top 问题 + 行动计划(按 Phase 5 顺序)。
-
-> **`check` 是 Codex-aware 的**:E3 探测根 `AGENTS.md`、E4 探测前端 `AGENTS.md` 的设计指引、H9 探测 `AGENTS.md` 里的 sandbox/approval 关键词;S4/S5/S6/S8 同理--`.claude/` 路径(`settings.json`/`rules`/`skills`/`agents`)只是 Claude 的可选加分项。纯 Codex 项目只要 `AGENTS.md` 写到位,这些项都能 PASS,不存在 `.claude` 误报,分数如实看即可。
-
-### 对话 2 · 拆分单体入口文件
-
-**用户**:
-> 把 `./legacy` 的单体 `AGENTS.md` 拆成按技术栈的 agent 文件。
-
-**AI**:进入 skill **restructure** 模式:
-1. 读单体 `AGENTS.md`,按栈分类段落(Java 段落→backend、Vue 段落→frontend、API 路径→`openspec/specs/`、构建命令按工具分流);
-2. 跟用户确认技术栈与目录映射;
-3. 生成各栈 `AGENTS.md`(含 Role / `NEVER` 跨域禁令 / Superpowers 五步纪律 / TDD / Build);
-4. 重写根 `AGENTS.md` 为导航中心(≤120 行);
-5. 删重复、校验无内容丢失、无死文件。
-
-> 纯 Codex:以 `AGENTS.md` 为主拆分对象;若同时用 Claude,再镜像出对应 `CLAUDE.md`。
-
-### 对话 3 · 为已有代码补 spec
-
-**用户**:
-> `legacy` 里已有 user 模块后端代码,但没 spec。请把它的 API 契约反向补进 `openspec/specs/`。
-
-**AI**:读现有 user 模块代码与接口,抽取为 `openspec/specs/api/spec.md`、`data/spec.md`、`errors/spec.md`(补 WHEN/THEN 场景),让 spec 成为前后端共同真相。后续改动一律走 `openspec new change` 增量,不再裸改代码。
-
-### 对话 4 · 审计验证
-
-**用户**:
-> 重构完再审计一次 `./legacy`。
-
-**AI**:重跑 `./scaffold.sh check ./legacy` + 全量审计,对比前后成熟度,确认:无重复、无死文件、各 agent 含必备 8 段、跨域禁令显式、根 `AGENTS.md` ≤120 行。
-
----
+接入（生成/重构 + 填充 + 补 spec + 审计）完成后：
+1. 先做「框架盘点」-- 盘点已有 common/framework 等横切约定（统一返回、日志切面、共有方法、错误码），写进 `openspec/specs/` 与各栈 `AGENTS.md`。
+2. 再进「场景二：日常 Loop 循环」开始第一个功能（`openspec new change` -> propose -> apply -> verify -> archive）。
 
 ## scaffold.sh 参数与排错指南
 
@@ -288,7 +258,7 @@ scaffold 按栈类型给默认值（backend → `mvn compile -q`，frontend → 
 
 ## 框架盘点:进入 Loop 循环前的项目分析(老项目必做)
 
-> 时机:项目接入(场景一/二)完成后、**第一个功能(进入 propose -> apply -> verify -> archive 循环)之前**。
+> 时机:项目接入(场景一)完成后、**第一个功能(进入 propose -> apply -> verify -> archive 循环)之前**。
 > 目的:把现有项目的框架约定"盘点"进 `openspec/specs/` 与各栈 `AGENTS.md`,让后续每个功能的 spec 都**对齐现状**,避免 AI 重复造轮子或违反既有约定(如自造返回封装、绕过统一日志)。
 > 这个盘点**不产生代码变更**,只产出 spec / 约定文档。
 
@@ -332,9 +302,9 @@ scaffold 按栈类型给默认值（backend → `mvn compile -q`，frontend → 
 5. **门禁**:用户确认盘点准确后,才进入第一个功能的 `openspec new change <name>`。
 
 > 关键纪律:盘点只写 spec/约定,**不动代码**。后续功能开发时,AI 读这些 spec 就会复用 `common` 工具、走统一返回、挂 AOP 日志,而不是另起炉灶。
-> 本 skill 面向"已有代码、但缺 CLAUDE.md/AGENTS.md"的项目(场景一/二皆是老项目),故框架盘点对两者都适用--接入完成、第一个功能前必做,不存在"从零搭建"可跳过的场景。
+> 本 skill 面向"已有代码、但缺 CLAUDE.md/AGENTS.md"的项目(见场景一),故框架盘点在接入完成后、第一个功能前必做,不存在"从零搭建"可跳过的场景。
 
-## 场景三:日常 Loop 循环
+## 场景二:日常 Loop 循环
 
 每个功能都走闭环。Codex 版用 `$` 技能(`$openspec-propose`/`$openspec-apply-change`/`$openspec-verify`/`$openspec-archive-change`)或 `openspec` CLI 驱动,纪律由 AGENTS.md 承载:
 
@@ -359,7 +329,7 @@ openspec instructions --change <n>  # 取该 artifact 富化指引
 
 ---
 
-## 场景四:跨栈功能协调(前后端联动)
+## 场景三:跨栈功能协调(前后端联动)
 
 当一个功能跨多个栈(如前端小程序 + 后端 Java,分属独立 git 仓库),单栈 change 不够:前端 agent 按跨域禁令正确排除后端,但"声明的后端依赖"没有归属,会被静默丢失(没人创建对应的兄弟 change)。scaffold.sh 对 ≥2 栈已自动建好协调层(`openspec/coordination/` + workset),用 LoopForge 约定的 **协调文档(父级)+ per-stack change(子级,`--goal` 软标签)** 模式解决(OpenSpec 1.6.0 已移除原生 initiative/workspace)。
 
@@ -632,7 +602,7 @@ AI: (检查 verify.md -> overall: PASS)
 
 ---
 
-## 场景五:运维与诊断子命令
+## 场景四:运维与诊断子命令
 
 脚手架生成后,`scaffold.sh` 还提供一组运维 / 诊断子命令,日常排查、token 优化、变更管理都用得上。可直跑 CLI,也可让 Codex 代劳(子命令在 CC 版与 Codex 版完全一致)。
 
@@ -700,7 +670,7 @@ AI: (检查 verify.md -> overall: PASS)
 ```bash
 ./scaffold.sh restructure ./legacy
 ```
-CLI 版做关键词扫描:自动检测技术栈(backend / frontend / mobile)、逐段落(`##` 标题)分类去向(root / specs / rules / 各栈 agent)、评估复杂度(行数是否 > 120)、给出迁移计划。**注意**:CLI 版只做结构分析(不动文件);真正拆分内容、生成 agent 文件、重写根入口是 skill **restructure 模式**的语义工作(见场景二对话 2)。
+CLI 版做关键词扫描:自动检测技术栈(backend / frontend / mobile)、逐段落(`##` 标题)分类去向(root / specs / rules / 各栈 agent)、评估复杂度(行数是否 > 120)、给出迁移计划。**注意**:CLI 版只做结构分析(不动文件);真正拆分内容、生成 agent 文件、重写根入口是 skill **restructure 模式**的语义工作(见场景一对话 1 · 起点 B)。
 
 > 版本查询:`./scaffold.sh version` 打印 LoopForge 版本、bash 版本、openspec / node 版本,排查环境问题时有用。
 
