@@ -283,7 +283,7 @@ Three-layer verification for an OpenSpec change. Confirms the implementation act
    cd "<stack-dir>" && <test-cmd>
    ```
    - Record `L3 = PASS` (exit 0) with pass/fail counts, or `L3 = FAIL` with the failing test names.
-   - Stacks with `test: null` record `L3 = SKIP` (e.g., "仅 ops_wechat 有 Vitest，其他子项目报 SKIP").
+   - Stacks with `test: null` record `L3 = SKIP` (e.g., "仅 stack-a 有 Vitest，其他子项目报 SKIP").
 
 8. **Compute overall status**
 
