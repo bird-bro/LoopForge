@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# loopforge scaffold — complete LoopForge project generator
+# loopforge scaffold - complete LoopForge project generator
 # OpenSpec (WHAT) + Superpowers (HOW) + Harness (WHO)
 #
 # Subcommands:
@@ -91,7 +91,7 @@ label_for() {
   esac
 }
 
-# write_if_absent <path>  — reads body from stdin; skips if file exists
+# write_if_absent <path>  - reads body from stdin; skips if file exists
 write_if_absent() {
   local f="$1"
   if [[ -f "$f" ]]; then
@@ -104,18 +104,18 @@ write_if_absent() {
   fi
 }
 
-# write_both <path1> <path2> — reads body from stdin; writes to both (skips existing per file)
+# write_both <path1> <path2> - reads body from stdin; writes to both (skips existing per file)
 write_both() {
   local body; body=$(cat)
   printf '%s\n' "$body" | write_if_absent "$1"
   printf '%s\n' "$body" | write_if_absent "$2"
 }
 
-# inject_after_frontmatter <file> <marker>  — reads block from stdin; inserts it right after
+# inject_after_frontmatter <file> <marker>  - reads block from stdin; inserts it right after
 # the YAML frontmatter closing '---'. Idempotent (skips if <marker> present). No-op if file missing.
 inject_after_frontmatter() {
   local file="$1" marker="$2" block
-  [[ -f "$file" ]] || { cat >/dev/null; echo "  skip (not generated yet): ${file#./} — run 'openspec init' first"; return 0; }
+  [[ -f "$file" ]] || { cat >/dev/null; echo "  skip (not generated yet): ${file#./} - run 'openspec init' first"; return 0; }
   grep -qF "$marker" "$file" && { cat >/dev/null; echo "  skip (embedded): ${file#./}"; return 0; }
   block="$(cat)"
   block="$block" awk '
@@ -127,7 +127,7 @@ inject_after_frontmatter() {
   echo "  embed: ${file#./}"
 }
 
-# autoloaded_md — print paths of auto-loaded .md in cwd (root + per-stack AGENTS.md/CLAUDE.md + .claude/rules/*.md)
+# autoloaded_md - print paths of auto-loaded .md in cwd (root + per-stack AGENTS.md/CLAUDE.md + .claude/rules/*.md)
 autoloaded_md() {
   [[ -f CLAUDE.md ]] && printf '%s\n' CLAUDE.md
   [[ -f AGENTS.md ]] && printf '%s\n' AGENTS.md
@@ -143,7 +143,8 @@ subst() { sed -e "s/@@PROJECT_NAME@@/$PROJECT_NAME/g" \
               -e "s/@@BACKEND_DIR@@/$BACKEND_DIR/g" \
               -e "s/@@FRONTEND_DIR@@/$FRONTEND_DIR/g" \
               -e "s/@@MOBILE_DIR@@/$MOBILE_DIR/g" \
-              -e "s/@@LOOPFORGE_VERSION@@/$LOOPFORGE_VERSION/g"; }
+              -e "s/@@LOOPFORGE_VERSION@@/$LOOPFORGE_VERSION/g" \
+              -e "s/@@WS_NAME@@/$(echo "$PROJECT_NAME" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | tr '_' '-')/g"; }
 
 # ---------------- generation core (reused by scaffold + list) ----------------
 generate_scaffold() {
@@ -171,7 +172,7 @@ generate_scaffold() {
   # generated propose/apply/archive are plain CLI flows with no Superpowers trigger / verify gate.
   # LoopForge layers these on so the documented loop (propose->apply->verify->archive) is real.
   echo "==> Layering LoopForge runtime enhancements (verify config + report template; Claude commands + Codex skills)"
-  # Capture verify body once — shared between Claude slash command and Codex skill.
+  # Capture verify body once - shared between Claude slash command and Codex skill.
   # openspec init (v1.6.0) generates propose/apply/archive/explore/sync only - NO verify
   # command/skill in any --tools mode. LoopForge creates it for both Claude and Codex.
   _LOOP_VERIFY_BODY=$(mktemp)
@@ -217,8 +218,8 @@ Three-layer verification for an OpenSpec change. Confirms the implementation act
    ```
 
    Parse the JSON for:
-   - `changeRoot` — where to write `verify.md`
-   - `artifactPaths.specs.existingOutputPaths` — delta spec files holding the WHEN/THEN scenarios (the L2 source of truth)
+   - `changeRoot` - where to write `verify.md`
+   - `artifactPaths.specs.existingOutputPaths` - delta spec files holding the WHEN/THEN scenarios (the L2 source of truth)
    - `root.path` (or `actionContext.allowedEditRoots[0]`) - project root, to locate `openspec/verify.config.yaml` (see step 4) and per-stack `CLAUDE.md`
    - `actionContext.allowedEditRoots` / stack hints - which stacks are affected
 
@@ -230,7 +231,7 @@ Three-layer verification for an OpenSpec change. Confirms the implementation act
    openspec validate "<name>" --json
    ```
 
-   If validation reports malformed specs/tasks, STOP and report — there is no point verifying against a broken spec. Suggest `/opsx:propose` to fix the spec.
+   If validation reports malformed specs/tasks, STOP and report - there is no point verifying against a broken spec. Suggest `/opsx:propose` to fix the spec.
 
 4. **Load the verify config (build & test commands per stack)**
 
@@ -243,12 +244,12 @@ Three-layer verification for an OpenSpec change. Confirms the implementation act
           build: <build-cmd>      # L1
           test: <test-cmd> | null # L3; null or omitted => SKIP
       ```
-   b. **Infer from per-stack `CLAUDE.md`** — read each affected stack's `CLAUDE.md`, extract commands from its `## Build Commands` (→ L1) and `## Test` (→ L3) sections.
-   c. **Ask once and persist** — use the **AskUserQuestion tool** to ask for the build (and optional test) command per affected stack, then write the answers to `openspec/verify.config.yaml` so future runs are deterministic.
+   b. **Infer from per-stack `CLAUDE.md`** - read each affected stack's `CLAUDE.md`, extract commands from its `## Build Commands` (→ L1) and `## Test` (→ L3) sections.
+   c. **Ask once and persist** - use the **AskUserQuestion tool** to ask for the build (and optional test) command per affected stack, then write the answers to `openspec/verify.config.yaml` so future runs are deterministic.
 
    Identify **affected stacks** from: status JSON `allowedEditRoots`, the change's `design.md`, or `tasks.md` stack tags. If only one stack exists, use it.
 
-5. **L1 — Build check (per affected stack)**
+5. **L1 - Build check (per affected stack)**
 
    For each affected stack, run its build command **inside that stack's `dir`**:
    ```bash
@@ -258,9 +259,9 @@ Three-layer verification for an OpenSpec change. Confirms the implementation act
    - Record `L1 = PASS` (exit 0) or `L1 = FAIL` (non-zero) with the failing output.
    - If a stack has no build command, record `L1 = SKIP`.
 
-6. **L2 — Spec alignment (reviewer-style, agent-driven)**
+6. **L2 - Spec alignment (reviewer-style, agent-driven)**
 
-   This is the core layer. It is NOT a CLI call — it is a semantic audit you perform.
+   This is the core layer. It is NOT a CLI call - it is a semantic audit you perform.
 
    a. **Read every delta spec** from `artifactPaths.specs.existingOutputPaths`. Extract each `## Scenario:` block and its WHEN/THEN clauses. These scenarios ARE the verification cases.
    b. **For each scenario**, search the affected stacks' code for implementation evidence:
@@ -271,12 +272,12 @@ Three-layer verification for an OpenSpec change. Confirms the implementation act
         use the structured fields for a precise check (does that exact route exist? does it return that status?). Absent `verify-meta`, fall back to semantic matching.
       - **Cross-domain rule**: a backend scenario is checked against backend code only; a frontend scenario against frontend code only. Never cite a frontend file as evidence for a backend scenario, and vice versa.
    c. **Score each scenario**:
-      - `✓ IMPLEMENTED` — clear, working evidence found → cite `file:line`
-      - `⚠ PARTIAL` — partial / fragile / missing edge case → cite what's there and what's missing
-      - `✗ NOT_IMPLEMENTED` — no evidence found → state what the spec requires vs. what exists
+      - `✓ IMPLEMENTED` - clear, working evidence found → cite `file:line`
+      - `⚠ PARTIAL` - partial / fragile / missing edge case → cite what's there and what's missing
+      - `✗ NOT_IMPLEMENTED` - no evidence found → state what the spec requires vs. what exists
    d. Tally: `N/M scenarios implemented`.
 
-7. **L3 — Test execution (per affected stack)**
+7. **L3 - Test execution (per affected stack)**
 
    For each affected stack with a non-null test command, run it inside that stack's `dir`:
    ```bash
@@ -341,13 +342,13 @@ Three-layer verification for an OpenSpec change. Confirms the implementation act
 ```
 
 **Guardrails**
-- `verify.md` is the single source of truth for verification status — always (over)write it at the end, even on FAIL, so the record is honest.
+- `verify.md` is the single source of truth for verification status - always (over)write it at the end, even on FAIL, so the record is honest.
 - Never mark a scenario IMPLEMENTED without a concrete `file:line` evidence citation.
 - Never run a build/test command outside its stack's `dir`.
 - Never let backend evidence satisfy a frontend scenario or vice versa (cross-domain prohibition).
-- L2 is judgment work — if you cannot find evidence, score NOT_IMPLEMENTED and say so; do not guess.
+- L2 is judgment work - if you cannot find evidence, score NOT_IMPLEMENTED and say so; do not guess.
 - If `verify.config.yaml` is missing, create it from the first run so subsequent runs are deterministic (do not re-ask).
-- Do not modify any source code during verify — verification is read/execute only. Fixes belong to `/opsx:apply`.
+- Do not modify any source code during verify - verification is read/execute only. Fixes belong to `/opsx:apply`.
 
 **Fluid Workflow Integration**
 - Re-runnable any number of times; each run overwrites `verify.md`.
@@ -358,7 +359,7 @@ __LOOPFORGE_VERIFY_BODY__
   { cat <<'__FM_CODEX__'
 ---
 name: openspec-verify
-description: Three-layer verification (L1 build / L2 spec alignment / L3 tests) for a change — writes verify.md as the archive credential
+description: Three-layer verification (L1 build / L2 spec alignment / L3 tests) for a change - writes verify.md as the archive credential
 license: MIT
 ---
 
@@ -411,7 +412,7 @@ EOF
 
   cat <<'__LOOPFORGE_VERIFY_TPL__' | write_if_absent openspec/verify-result.template.md
 <!--
-  Written by the verify step. This file is the archive credential — `openspec archive`
+  Written by the verify step. This file is the archive credential - `openspec archive`
   parses the `overall` field below. Do not hand-edit; re-run verify to refresh.
 -->
 ---
@@ -498,11 +499,11 @@ __LOOPFORGE_ENSURE__
   # with no verify gate; loopforge layers the same propose→apply→verify→archive loop.
   _trig_propose=$(cat <<'__LT__'
 <!-- LoopForge: superpowers-trigger-propose -->
-## LoopForge Integration (auto-triggered — LoopForge loop start)
+## LoopForge Integration (auto-triggered - LoopForge loop start)
 
 Before writing artifacts, ground the spec in real requirements:
-1. **Activate `brainstorming`** — clarify goals/scope/edge cases with the user; ask questions; do NOT write the proposal until the user confirms understanding.
-2. **Use `writing-plans`** — structure confirmed requirements into proposal/design/tasks/spec; write concrete WHEN/THEN scenarios (these become verify L2 cases later).
+1. **Activate `brainstorming`** - clarify goals/scope/edge cases with the user; ask questions; do NOT write the proposal until the user confirms understanding.
+2. **Use `writing-plans`** - structure confirmed requirements into proposal/design/tasks/spec; write concrete WHEN/THEN scenarios (these become verify L2 cases later).
 3. Then proceed to the `openspec new change` / `openspec status` / `openspec instructions` steps below.
 
 > If Superpowers skills are not installed, apply the same discipline manually.
@@ -594,7 +595,7 @@ __LT__
 )
   _trig_archive=$(cat <<'__LT__'
 <!-- LoopForge: verify-gate-archive -->
-## Pre-archive Gate (verify credential — mandatory, runs before the archive move)
+## Pre-archive Gate (verify credential - mandatory, runs before the archive move)
 
 Check for `verify.md` in the change root:
 - **Missing** -> warn "未找到 verify.md，该 change 尚未验证"; recommend running the `openspec-verify` skill (three-layer verification); ask 否(推荐)/是; on 否 STOP.
@@ -624,46 +625,46 @@ __LT__
   printf '%s\n' "$_trig_propose" | inject_after_frontmatter .codex/skills/openspec-propose/SKILL.md '<!-- LoopForge: superpowers-trigger-propose -->'
   printf '%s\n' "$_trig_apply"   | inject_after_frontmatter .codex/skills/openspec-apply-change/SKILL.md '<!-- LoopForge: superpowers-trigger-apply -->'
   printf '%s\n' "$_trig_archive" | inject_after_frontmatter .codex/skills/openspec-archive-change/SKILL.md '<!-- LoopForge: verify-gate-archive -->'
-  # Legacy source-command-opsx-* skills (older openspec versions) — no-op if absent
+  # Legacy source-command-opsx-* skills (older openspec versions) - no-op if absent
   printf '%s\n' "$_trig_propose" | inject_after_frontmatter .codex/skills/source-command-opsx-propose/SKILL.md '<!-- LoopForge: superpowers-trigger-propose -->'
   printf '%s\n' "$_trig_apply"   | inject_after_frontmatter .codex/skills/source-command-opsx-apply/SKILL.md '<!-- LoopForge: superpowers-trigger-apply -->'
   printf '%s\n' "$_trig_archive" | inject_after_frontmatter .codex/skills/source-command-opsx-archive/SKILL.md '<!-- LoopForge: verify-gate-archive -->'
 
-  # ---------- 1. openspec/  (WHAT — shared truth) ----------
+  # ---------- 1. openspec/  (WHAT - shared truth) ----------
   echo "==> Creating openspec/ (WHAT)"
   mkdir -p openspec/specs openspec/changes/_template openspec/archive
 
   cat <<'EOF' | subst | write_if_absent openspec/README.md
-# OpenSpec — Shared Truth (WHAT)
+# OpenSpec - Shared Truth (WHAT)
 
 > Generated by LoopForge v@@LOOPFORGE_VERSION@@
 
 This directory is the **single source of truth** for WHAT to build.
 
 ## Structure
-- `specs/` — static contracts (`api/`, `data/`, `errors/`). Authoritative; all agents reference it.
-- `changes/` — dynamic delta proposals (active work). Start from `_template/`.
-- `archive/` — completed proposals (history).
-- `project.md` — tech stack, module map, architecture (no coding conventions).
+- `specs/` - static contracts (`api/`, `data/`, `errors/`). Authoritative; all agents reference it.
+- `changes/` - dynamic delta proposals (active work). Start from `_template/`.
+- `archive/` - completed proposals (history).
+- `project.md` - tech stack, module map, architecture (no coding conventions).
 
 ## Responsibility Separation
 | Layer | Location | Role |
 |:--|:--|:--|
-| Spec (here) | `openspec/` | WHAT — shared truth |
-| Discipline | `AGENTS.md` (+ `.claude/` if Claude) | HOW — TDD, review, quality gates |
-| Harness | `AGENTS.md` (+ `CLAUDE.md` mirror) + per-stack agents | WHO — roles, boundaries |
+| Spec (here) | `openspec/` | WHAT - shared truth |
+| Discipline | `AGENTS.md` (+ `.claude/` if Claude) | HOW - TDD, review, quality gates |
+| Harness | `AGENTS.md` (+ `CLAUDE.md` mirror) + per-stack agents | WHO - roles, boundaries |
 
 ## Workflow
-1. `openspec new change <name>` — brainstorm + write proposal (Superpowers discipline)
+1. `openspec new change <name>` - brainstorm + write proposal (Superpowers discipline)
 2. implement per spec (TDD enforced); verify: L1 build + L2 `openspec validate` + L3 tests
-3. `openspec archive <name>` — move completed proposal to `archive/`
+3. `openspec archive <name>` - move completed proposal to `archive/`
 EOF
 
   cat <<'EOF' | subst | write_if_absent openspec/project.md
-# Project Overview — @@PROJECT_NAME@@
+# Project Overview - @@PROJECT_NAME@@
 
 ## System
-@@PROJECT_NAME@@ — [one-line business description]
+@@PROJECT_NAME@@ - [one-line business description]
 
 ## Tech Stack
 | Layer | Tech |
@@ -678,16 +679,16 @@ EOF
 ## Architecture
 [High-level architecture: layers, data flow, external integrations]
 
-> No coding conventions here — those live in root `AGENTS.md` and per-stack `AGENTS.md` (`.claude/rules/` if Claude).
+> No coding conventions here - those live in root `AGENTS.md` and per-stack `AGENTS.md` (`.claude/rules/` if Claude).
 EOF
 
   cat <<'EOF' | write_if_absent openspec/specs/README.md
-# Specs — Static Contracts
+# Specs - Static Contracts
 
 Authoritative contracts all agents must follow.
-- `api/spec.md` — API contract (endpoints, request/response). Frontend mocks from it; backend implements to it.
-- `data/spec.md` — data models, schemas.
-- `errors/spec.md` — error codes, response format.
+- `api/spec.md` - API contract (endpoints, request/response). Frontend mocks from it; backend implements to it.
+- `data/spec.md` - data models, schemas.
+- `errors/spec.md` - error codes, response format.
 
 Every spec must include WHEN/THEN verification scenarios (executable acceptance criteria).
 EOF
@@ -706,7 +707,7 @@ EOF
 ### [Resource]
 
 #### WHEN [scenario / actor intent]
-- `GET /api/v1/[resource]` — [description]
+- `GET /api/v1/[resource]` - [description]
   - Response: `[field]: [type]`
 
 #### THEN [expected outcome]
@@ -732,7 +733,7 @@ EOF
 | Code | HTTP | Meaning |
 |:--|:--|:--|
 | 0 | 200 | Success |
-| 40001 | 400 | [Bad request — validation] |
+| 40001 | 400 | [Bad request - validation] |
 | 40401 | 404 | [Resource not found] |
 | 50001 | 500 | [Internal error] |
 
@@ -746,7 +747,7 @@ EOF
 # Proposal: [Change Name]
 
 ## Why
-[Business reason — what problem this solves]
+[Business reason - what problem this solves]
 
 ## What
 [Summary of the change]
@@ -775,16 +776,16 @@ EOF
 # Spec Delta: [Change Name]
 
 ## Data Model
-[New / changed entities — reference `specs/data/spec.md`]
+[New / changed entities - reference `specs/data/spec.md`]
 
 ## API
-[New / changed endpoints — reference `specs/api/spec.md`]
+[New / changed endpoints - reference `specs/api/spec.md`]
 
 ## Business Rules
 [Rules introduced or changed]
 
 ## Error Handling
-[New error codes — reference `specs/errors/spec.md`]
+[New error codes - reference `specs/errors/spec.md`]
 
 ## Verification Scenarios
 ### WHEN [scenario]
@@ -802,11 +803,11 @@ test runner is added to its stack. Linked from audit H-legacy check.
 EOF
 
   cat <<'EOF' | write_if_absent openspec/changes/README.md
-# Changes — Delta Proposals
+# Changes - Delta Proposals
 
 Active work lives here. Each proposal is a directory containing:
-- `proposal.md` — Why / What / Scope / Success Criteria / Constraints / Risks
-- `spec.md` — Data Model / API / Business Rules / Errors / WHEN-THEN verification
+- `proposal.md` - Why / What / Scope / Success Criteria / Constraints / Risks
+- `spec.md` - Data Model / API / Business Rules / Errors / WHEN-THEN verification
 
 Start from `_template/`. On completion, archive via `openspec archive <name>`.
 EOF
@@ -1645,15 +1646,15 @@ __LF_SDD_PROG__
       backend)
         cat <<EOF | subst | write_both "$dir/CLAUDE.md" "$dir/AGENTS.md"
 <!-- auto-loaded: English only. Human notes: docs/GUIDE.zh.md -->
-# @@PROJECT_NAME@@ — $label
+# @@PROJECT_NAME@@ - $label
 
 ## Role
 You are a **$label**. Your scope: server-side logic, APIs, data access, business rules.
 **NEVER generate frontend code** (that lives in \`../@@FRONTEND_DIR@@/\`).
-**NEVER modify \`../openspec/specs/\`** — specs are shared truth, read-only.
+**NEVER modify \`../openspec/specs/\`** - specs are shared truth, read-only.
 
 ## Project Overview
-- **System**: @@PROJECT_NAME@@ — [one-line business description]
+- **System**: @@PROJECT_NAME@@ - [one-line business description]
 - **Stack**: [e.g. Java 17 + Spring Boot 3 + MyBatis]
 - **Database**: [e.g. MySQL 8]
 
@@ -1661,14 +1662,14 @@ You are a **$label**. Your scope: server-side logic, APIs, data access, business
 1. Read \`../openspec/specs/api/spec.md\` (authoritative contract)
 2. Read \`../openspec/specs/data/spec.md\` and \`../openspec/specs/errors/spec.md\`
 3. Check \`../openspec/changes/\` for active proposals
-4. If no spec exists, run \`openspec new change <name>\` first — never code without a spec
+4. If no spec exists, run \`openspec new change <name>\` first - never code without a spec
 
 ## Module Structure
 [Describe backend module layout]
 
 ## Coding Standards
 - [Domain-specific conventions; shared conventions in root \`AGENTS.md\` / \`../openspec/specs/\`]
-- Never modify existing public methods — use overloading
+- Never modify existing public methods - use overloading
 - New behavior = new method/class
 
 ## Superpowers Workflow (follow from context; driven by the openspec CLI)
@@ -1692,22 +1693,22 @@ EOF
       frontend|frontend-mobile)
         cat <<EOF | subst | write_both "$dir/CLAUDE.md" "$dir/AGENTS.md"
 <!-- auto-loaded: English only. Human notes: docs/GUIDE.zh.md -->
-# @@PROJECT_NAME@@ — $label
+# @@PROJECT_NAME@@ - $label
 
 ## Role
 You are a **$label**. Your scope: UI, components, state, API integration.
 **NEVER generate backend code** (that lives in \`../@@BACKEND_DIR@@/\`).
-**NEVER modify \`../openspec/specs/\`** — specs are shared truth, read-only.
+**NEVER modify \`../openspec/specs/\`** - specs are shared truth, read-only.
 
 ## Project Overview
-- **System**: @@PROJECT_NAME@@ — [one-line business description]
+- **System**: @@PROJECT_NAME@@ - [one-line business description]
 - **Stack**: [e.g. Vue 3 + Vite + Element Plus (web) / Vant (mobile)]
 
 ## Before You Code
-1. Read \`../openspec/specs/api/spec.md\` — mock from it (MSW), do not invent endpoints
-2. Read \`../openspec/specs/errors/spec.md\` — handle every error code
+1. Read \`../openspec/specs/api/spec.md\` - mock from it (MSW), do not invent endpoints
+2. Read \`../openspec/specs/errors/spec.md\` - handle every error code
 3. Check \`../openspec/changes/\` for active proposals
-4. If no spec exists, run \`openspec new change <name>\` first — never code without a spec
+4. If no spec exists, run \`openspec new change <name>\` first - never code without a spec
 
 ## Mock-First
 - Mock APIs from \`../openspec/specs/api/spec.md\` (MSW)
@@ -1718,7 +1719,7 @@ You are a **$label**. Your scope: UI, components, state, API integration.
 
 ## Coding Standards
 - [Domain-specific conventions; shared conventions in root \`AGENTS.md\` / \`../openspec/specs/\`]
-- Never modify existing components — compose or extend
+- Never modify existing components - compose or extend
 
 ## Superpowers Workflow (follow from context; driven by the openspec CLI)
 1. brainstorm → clarify requirements
@@ -1775,7 +1776,7 @@ EOF
 
 ## Open all stacks together
 ```bash
-openspec workset open @@PROJECT_NAME@@ --tool code   # IDE (VS Code/Cursor). Agent open is temporarily disabled in 1.6.0.
+openspec workset open @@WS_NAME@@ --tool code   # IDE (VS Code/Cursor). Agent open is temporarily disabled in 1.6.0.
 ```
 For a coordinator agent session, launch `codex` / `claude` manually in the project root.
 
@@ -1808,15 +1809,17 @@ __COORD_README__
 Feature done = ALL registered changes verify PASS -> archive each.
 __COORD_TPL__
       # Workset grouping all stack code dirs (no --tool: agent open is disabled in 1.6.0; create saves cleanly).
+      # OpenSpec requires kebab-case workset names; convert PROJECT_NAME accordingly.
+      _ws_name=$(echo "$PROJECT_NAME" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | tr '_' '-')
       _members=""
       for _s in $(echo "$STACKS" | tr ',' ' '); do
         _members="$_members --member ${_s}=./$(dir_for "$_s")"
       done
       # shellcheck disable=SC2086
-      openspec workset create "$PROJECT_NAME" $_members >/dev/null 2>&1 \
-        || echo "  warn: workset create failed (maybe exists); manual: openspec workset create $PROJECT_NAME $_members"
+      openspec workset create "$_ws_name" $_members >/dev/null 2>&1 \
+        || echo "  warn: workset create failed (maybe exists); manual: openspec workset create $_ws_name $_members"
       echo "    coordination:  openspec/coordination/ (shared design/decisions + per-feature change registry)"
-      echo "    workset:       $PROJECT_NAME (open all stacks: openspec workset open $PROJECT_NAME --tool code)"
+      echo "    workset:       $_ws_name (open all stacks: openspec workset open $_ws_name --tool code)"
       echo "    cross-stack flow: see AGENTS.md \"Cross-Stack Feature\""
     fi
   fi
@@ -1843,7 +1846,7 @@ __COORD_TPL__
     echo '```'
     echo ""
     echo "## Business Context"
-    echo "[1–3 sentences from openspec/project.md]"
+    echo "[1-3 sentences from openspec/project.md]"
     echo ""
     echo "## Tech Stack"
     echo "| Layer | Tech |"
@@ -1853,14 +1856,14 @@ __COORD_TPL__
     if has frontend-mobile; then echo "| Frontend (mobile) | [fill] |"; fi
     echo ""
     echo "## Roles"
-    echo "- **Reviewer** — read + execute only (runs checks/tests); NEVER edits code. Reports \`file:line\` + severity."
-    echo "- **Coordinator** — delegates to domain agents; NEVER writes domain code itself."
+    echo "- **Reviewer** - read + execute only (runs checks/tests); NEVER edits code. Reports \`file:line\` + severity."
+    echo "- **Coordinator** - delegates to domain agents; NEVER writes domain code itself."
     echo "- **Implementer** - implements ONE task from the execution contract (SDD mode); follows TDD Iron Law; reports DONE|BLOCKED|NEEDS_CONTEXT."
     echo "- Each per-stack \`AGENTS.md\` declares its own Role + cross-domain prohibition."
     echo ""
     echo "## Conventions"
     echo "- File names: kebab-case (\`user-service.ts\`)"
-    echo "- Never modify existing public methods — use overloading"
+    echo "- Never modify existing public methods - use overloading"
     echo "- Auto-loaded files English only (Chinese notes in \`docs/GUIDE.zh.md\`)"
     echo ""
     echo "## Development Workflow"
@@ -1884,14 +1887,14 @@ __COORD_TPL__
       echo "2. Per stack (parallel): \`openspec new change <name> --goal \"<feature>\"\` (soft-tagged to the feature)"
       echo "3. Implement each in its own stack (cross-domain ban unchanged; frontend mocks first); coordinate via the coordination doc \`design\`/\`decisions\`"
       echo "4. Gate: feature done = ALL registered changes verify PASS (\`openspec/verify.config.yaml\`) -> archive each"
-      echo "   Single-stack: skip coordination; plain \`openspec new change\`. Open all stacks: \`openspec workset open @@PROJECT_NAME@@ --tool code\`."
+      echo "   Single-stack: skip coordination; plain \`openspec new change\`. Open all stacks: \`openspec workset open @@WS_NAME@@ --tool code\`."
     fi
     echo ""
     echo "### AI Coding Rules"
-    echo "- Spec first — read \`openspec/specs/\` before writing code"
-    if has frontend || has frontend-mobile; then echo "- UI prototype first — confirm with user before implementing"; fi
-    echo "- TDD — Superpowers discipline enforced (red → green → refactor)"
-    echo "- No cross-domain — each agent writes only its own stack"
+    echo "- Spec first - read \`openspec/specs/\` before writing code"
+    if has frontend || has frontend-mobile; then echo "- UI prototype first - confirm with user before implementing"; fi
+    echo "- TDD - Superpowers discipline enforced (red → green → refactor)"
+    echo "- No cross-domain - each agent writes only its own stack"
     echo "- Dangerous ops (\`rm -rf\`, \`git push --force\`, \`git reset --hard\`) gated by Codex sandbox/approval"
     echo ""
     echo "### Session Continuity"
@@ -1899,7 +1902,7 @@ __COORD_TPL__
     echo ""
     echo "## Build & Test"
     echo '```'
-    echo "[3–5 commands covering all stacks; details in per-stack AGENTS.md/CLAUDE.md]"
+    echo "[3-5 commands covering all stacks; details in per-stack AGENTS.md/CLAUDE.md]"
     echo '```'
   } | subst | write_both AGENTS.md CLAUDE.md
 
@@ -1967,9 +1970,9 @@ EOF
 - 验证凭证：`verify.md` 是归档的通行证
 
 ## 常用命令
-- `scaffold.sh check ./<project>` — 审计项目合规度（含 O7 中文检查）
-- `scaffold.sh tokens ./<project>` — 测自动加载文件 token 数与中文占比
-- `scaffold.sh list` — 预览脚手架生成哪些文件
+- `scaffold.sh check ./<project>` - 审计项目合规度（含 O7 中文检查）
+- `scaffold.sh tokens ./<project>` - 测自动加载文件 token 数与中文占比
+- `scaffold.sh list` - 预览脚手架生成哪些文件
 
 > 维护提示：英文 auto-loaded 文件改了，按需把关键点同步到本文件即可，不必逐行对照。
 __GUIDE_ZH__
@@ -1982,7 +1985,7 @@ __GUIDE_ZH__
   echo "  1. cd $TARGET_DIR"
   if [[ $RUN_INIT -eq 0 ]]; then echo "  2. openspec init --tools $TOOLS   (generate openspec/ + instruction files)"; fi
   echo "  3. Fill [BRACKETS] in openspec/project.md, openspec/specs/*, and per-stack AGENTS.md/CLAUDE.md"
-  echo "  4. Edit openspec/verify.config.yaml — per-stack build/test commands for verify (L1 build / L3 test)"
+  echo "  4. Edit openspec/verify.config.yaml - per-stack build/test commands for verify (L1 build / L3 test)"
   echo "  5. Run the loopforge audit (33 checks): ./scaffold.sh check ."
 }
 
@@ -2015,7 +2018,7 @@ cmd_check() {
 
   if [[ -z "$dir" ]]; then
     echo ""
-    echo "==> No project directory specified — self-check only."
+    echo "==> No project directory specified - self-check only."
     echo "    Audit a project with: scaffold.sh check <project-dir>"
     _score "$pass" "$partial" "$fail" "$total"
     exit 0
@@ -2034,7 +2037,7 @@ cmd_check() {
   [[ -f openspec/specs/errors/spec.md ]] && specs=$((specs+1))
   case $specs in 3) report PASS "O1 specs api/data/errors";; 1|2) report PARTIAL "O1 specs ($specs/3: api/data/errors)";; *) report FAIL "O1 specs api/data/errors";; esac
  if [[ -f openspec/changes/_template/proposal.md && -f openspec/changes/_template/spec.md ]]; then report PASS "O3 changes/_template (proposal+spec)"; else report FAIL "O3 changes/_template"; fi
-  # O4 — canonical archive is openspec/archive/; archives misplaced in
+  # O4 - canonical archive is openspec/archive/; archives misplaced in
   # openspec/changes/archive/ is common drift - a dir-existence-only check hides it.
   local _o4real=0 _o4mis=0 _o4e
   if [[ -d openspec/archive ]]; then
@@ -2064,7 +2067,7 @@ cmd_check() {
   # O8 WHEN/THEN
   if grep -rq 'WHEN' openspec/changes openspec/specs 2>/dev/null; then report PASS "O8 WHEN/THEN scenarios present"; else report PARTIAL "O8 no WHEN/THEN found (add to specs/changes)"; fi
 
-  # O7 — auto-loaded files English-only (CJK ratio; Chinese wastes tokens every session)
+  # O7 - auto-loaded files English-only (CJK ratio; Chinese wastes tokens every session)
   if ! command -v python3 >/dev/null 2>&1; then
     report PARTIAL "O7 auto-loaded English (no python3 to scan CJK)"
   else
@@ -2099,7 +2102,7 @@ PY
 
   # E3 / S6 / S4 / S8 / S5
   [[ -f AGENTS.md ]] && report PASS "E3 root AGENTS.md (Codex harness entry)" || report FAIL "E3 root AGENTS.md (run: scaffold.sh / create AGENTS.md nav hub)"
-  # E3+ — verify skill/command (loopforge enhancement: openspec init ships none)
+  # E3+ - verify skill/command (loopforge enhancement: openspec init ships none)
   if [[ -f .claude/commands/opsx/verify.md ]]; then
     report PASS "E3+ verify command (.claude/commands/opsx/verify.md)"
   elif [[ -f .codex/skills/openspec-verify/SKILL.md ]]; then
@@ -2115,7 +2118,7 @@ PY
       ;;
     esac
   done
-  if [[ $_has_fe -eq 0 ]]; then report PASS "E4 frontend design guidance (no frontend stack — N/A)"
+  if [[ $_has_fe -eq 0 ]]; then report PASS "E4 frontend design guidance (no frontend stack - N/A)"
   elif [[ $_fe -eq 1 ]]; then report PASS "E4 frontend AGENTS.md design guidance"
   else report PARTIAL "E4 frontend design guidance (add a Design Standards section to the frontend AGENTS.md)"; fi
   local _s6=0 _s6note=""
@@ -2145,7 +2148,7 @@ PY
   if [[ $_sdd -eq 3 ]]; then report PASS "S8b SDD artifacts (implementer/reviewer prompts + progress ledger)"
   elif [[ $_sdd -gt 0 ]]; then report PARTIAL "S8b SDD artifacts (found $_sdd/3: re-run scaffold to generate all openspec/sdd/ templates)"
   else report PARTIAL "S8b SDD artifacts (no openspec/sdd/ - run scaffold to generate SDD templates)"; fi
-  # S5 — domain guidance: per-stack AGENTS.md carries deep guidance (Codex); .claude/skills/ if Claude.
+  # S5 - domain guidance: per-stack AGENTS.md carries deep guidance (Codex); .claude/skills/ if Claude.
   local _s5_ag=0 _s5_cl=0 _s5_super=0 _s5d _s5n
   while IFS= read -r _; do _s5_ag=$((_s5_ag+1)); done < <(find . -mindepth 2 -maxdepth 2 -name AGENTS.md -not -path './openspec/*' -not -path './.claude/*' 2>/dev/null)
   while IFS= read -r _s5d; do
@@ -2277,6 +2280,7 @@ cmd_list() {
       --backend-dir)   BACKEND_DIR="$2"; shift 2;;
       --frontend-dir)  FRONTEND_DIR="$2"; shift 2;;
       --mobile-dir)    MOBILE_DIR="$2"; shift 2;;
+      --dir|--tools|--no-init) shift 2 2>/dev/null || shift;;  # ignored (list uses temp dir)
       -h|--help)       echo "Usage: scaffold.sh list [--stacks <list>] [--backend-dir <n>] [--frontend-dir <n>] [--mobile-dir <n>]"; exit 0;;
       *) echo "list: unknown arg: $1" >&2; exit 1;;
     esac
