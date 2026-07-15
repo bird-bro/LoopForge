@@ -24,7 +24,7 @@ LoopForge 围绕工业级三层范式 **OpenSpec + Superpowers + Harness**构建
 | 模式 | 用途 |
 |:--|:--|
 | **scaffold(脚手架)** | 通过 `scaffold.sh` 从零生成完整框架 |
-| **audit(审计)** | 33 项检查的成熟度评分(E1–E4、O1–O8、S1–S9、H1–H11) |
+| **audit(审计)** | 30 项检查的成熟度评分(E1–E4、O1–O8、S1–S9、H1–H8) |
 | **restructure(重构)** | 将单体 `CLAUDE.md` / `AGENTS.md` 拆分为按技术栈分离的 Agent + 优化 |
 
 **核心理念:**
@@ -34,7 +34,7 @@ LoopForge 围绕工业级三层范式 **OpenSpec + Superpowers + Harness**构建
 
 **主要应用场景：一个人接手多个前后端分离、已上线的老项目。** Skill 集提供:
 
-- **33 项审计**诊断每个老项目缺什么(spec?测试?Agent 分离?构建验证?)
+- **30 项审计**诊断每个老项目缺什么(spec?测试?Agent 分离?构建验证?)
 - **重构模式**将单体 `CLAUDE.md`/`AGENTS.md` 拆分为按栈分离的 Agent,不破坏现有代码
 - **Legacy 感知 TDD**(特征化测试 + 债务登记)让你安全修改无测试代码,不用卡死
 - **跨栈协调**(LoopForge coordination docs + workset + OpenSpec `--goal` tags)让一人团队也能编排前后端跨仓库变更
@@ -123,7 +123,7 @@ cp -R skills/loopforge-codex ~/.codex/skills/loopforge-codex
 | `contract [--force] <change-dir>` | 从规划产物自动生成 `execution-contract.md` |
 | `restructure [project]` | 分析单体入口文件,规划按技术栈拆分 |
 
-> `check` 跑可自动判定的子集(25 项 = 3 环境自检 + 22 结构合规),输出 PASS/PARTIAL/FAIL + 成熟度分;完整 33 项语义审计请让 skill 进 audit 模式。`tokens` 逐文件测量 O7 的 CJK 开销(`CJK_THRESHOLD` 环境变量,默认 10%)。
+> `check` 跑可自动判定的子集(24 项 = 3 环境自检 + 21 结构合规),输出 PASS/PARTIAL/FAIL + 成熟度分;完整 30 项语义审计请让 skill 进 audit 模式。`tokens` 逐文件测量 O7 的 CJK 开销(`CJK_THRESHOLD` 环境变量,默认 10%)。
 
 ### `scaffold.sh` 生成内容
 
@@ -158,15 +158,15 @@ myapp/
 
 ## 审计现有项目
 
-触发 skill(如"审计我的项目结构")。它会执行 Phase 0(环境 E1–E4)+ Phase 1(33 项检查),输出诊断表、成熟度等级、Top 问题与行动计划。
+触发 skill(如"审计我的项目结构")。它会执行 Phase 0(环境 E1–E4)+ Phase 1(30 项检查),输出诊断表、成熟度等级、Top 问题与行动计划。
 
 > Codex 注意:`scaffold.sh check` 是双源的 -- 先查 `AGENTS.md`,再查 `.claude/` 作为回退。纯 Codex 项目(无 `.claude/`)通过 `AGENTS.md` 通过 E3/E4/S4/S5/S6/S8/S8b/H9,不会误报 PARTIAL/FAIL。
 
 ### 成熟度评分
 
 ```
-环境 = E/4 · OpenSpec = O/8 · Superpowers = S/9 · Harness = H/11
-总体 = (E + O + S + H) / 32
+环境 = E/4 · OpenSpec = O/8 · Superpowers = S/9 · Harness = H/8
+总体 = (E + O + S + H) / 29
 ```
 
 | 得分 | 等级 |

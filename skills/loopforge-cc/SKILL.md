@@ -1,6 +1,6 @@
 ---
 name: loopforge-cc
-description: Loop工程框架（LoopForge）- 为已有代码项目接入 OpenSpec + Superpowers + Harness 工程范式。当用户说"接入 loop 工程"、"搭 loop 脚手架"、"loop 工程框架"、"审计项目结构"、"拆分 CLAUDE.md"时触发。三种模式：scaffold（为已有代码无 CLAUDE.md 的项目生成框架）、audit（33 项成熟度审计）、restructure（拆分单体 CLAUDE.md 为按栈 agent 文件）。English: Loop Engineering - scaffold, audit, and restructure an AI-collaboration project against the OpenSpec + Superpowers + Harness (LoopForge) paradigm. Use when the user asks to "set up loop engineering", "scaffold a LoopForge project", "audit project structure", "split CLAUDE.md", or "optimize AI collaboration structure".
+description: Loop工程框架（LoopForge）- 为已有代码项目接入 OpenSpec + Superpowers + Harness 工程范式。当用户说"接入 loop 工程"、"搭 loop 脚手架"、"loop 工程框架"、"审计项目结构"、"拆分 CLAUDE.md"时触发。三种模式：scaffold（为已有代码无 CLAUDE.md 的项目生成框架）、audit（30 项成熟度审计）、restructure（拆分单体 CLAUDE.md 为按栈 agent 文件）。English: Loop Engineering - scaffold, audit, and restructure an AI-collaboration project against the OpenSpec + Superpowers + Harness (LoopForge) paradigm. Use when the user asks to "set up loop engineering", "scaffold a LoopForge project", "audit project structure", "split CLAUDE.md", or "optimize AI collaboration structure".
 ---
 
 # Loop Engineering - Scaffold · Audit · Restructure
@@ -24,7 +24,7 @@ Key principles: Spec as Code. TDD enforced (not a slogan). Skills on-demand. No 
 | Mode | When to use | How |
 |:--|:--|:--|
 | **scaffold** | Existing code, no CLAUDE.md / openspec/ | Run `scaffold.sh` → complete framework |
-| **audit** | Existing project, check health | Run 33 checks, score maturity, report gaps |
+| **audit** | Existing project, check health | Run 30 checks, score maturity, report gaps |
 | **restructure** | Monolithic CLAUDE.md or low audit score | Split into per-stack agents + apply Phase 5 order |
 
 ## Execution Instructions
@@ -50,7 +50,7 @@ The generator ships with ten subcommands (run directly, or ask the AI to run the
 | `scaffold.sh contract [--force] <change-dir>` | Auto-generate `execution-contract.md` from planning artifacts |
 | `scaffold.sh restructure [project]` | Analyze a monolithic entry file and plan a per-stack split |
 
-`check` prints PASS / PARTIAL / FAIL per check plus a maturity score (an automatable subset of the 33; use audit mode for the full set). It also auto-measures **O7** - CJK char ratio in auto-loaded files, threshold via the `CJK_THRESHOLD` env var (default 10). For per-file token counts and CJK breakdown, run `scaffold.sh tokens`. See `USAGE-PLAYBOOK.md` for dialogue-style usage.
+`check` prints PASS / PARTIAL / FAIL per check plus a maturity score (an automatable subset of the 30; use audit mode for the full set). It also auto-measures **O7** - CJK char ratio in auto-loaded files, threshold via the `CJK_THRESHOLD` env var (default 10). For per-file token counts and CJK breakdown, run `scaffold.sh tokens`. See `USAGE-PLAYBOOK.md` for dialogue-style usage.
 
 ---
 
@@ -106,7 +106,7 @@ Generate a complete Loop Engineering framework from scratch.
 
 Environment score = E_yes / 4. 0/4 → STOP; 1-3/4 → WARNING; 4/4 → PASS.
 
-### Phase 1: 33 Checks
+### Phase 1: 30 Checks
 
 #### 1.1 OpenSpec - "Define Direction" (O1-O8)
 
@@ -130,13 +130,13 @@ Environment score = E_yes / 4. 0/4 → STOP; 1-3/4 → WARNING; 4/4 → PASS.
 | S3 | Superpowers workflow | 5 steps: brainstorm → writing-plans → executing-plans → code-review → verification. Auto-triggered by `/opsx:propose`, `/opsx:apply`, `/opsx:verify` - no slash command needed |
 | S4 | Project rules with globs | `.claude/rules/` auto-loaded by file-path matching |
 | S5 | Domain skills | `.claude/skills/` with YAML frontmatter; max 300 lines each |
-| S6 | Permissions configured | `.claude/settings.json` with allow/deny lists |
+| S6 | Permissions & dangerous-command gating | `.claude/settings.json` with allow/deny lists; `rm -rf`, `git push --force`, `git reset --hard` in deny list (absorbs former H9) |
 | S7 | Hooks configured | SessionStart, PreToolUse, Stop hooks |
 | S8 | Custom agents | Reviewer (Read+Bash only) + Coordinator + Implementer (SDD dispatch) |
 | S8b | SDD artifacts | `openspec/sdd/` has `implementer-prompt.md` + `reviewer-prompt.md` + `progress.md` (subagent-driven development templates) |
 | S9 | Context budget | Agent CLAUDE.md < 3K tokens; details in `skills/` for on-demand load |
 
-#### 1.3 Harness - "Orchestrate Collaboration" (H1-H11)
+#### 1.3 Harness - "Orchestrate Collaboration" (H1-H8)
 
 | # | Check | Criteria |
 |:--|:--|:--|
@@ -148,9 +148,6 @@ Environment score = E_yes / 4. 0/4 → STOP; 1-3/4 → WARNING; 4/4 → PASS.
 | H6 | Session management | `/resume`, `/branch`, `/rewind` keep continuity |
 | H7 | No dead files | Every `.md` has a clear load/trigger path (CLAUDE.md→Claude Code, AGENTS.md→Codex, specs→all). AGENTS.md is NOT dead |
 | H8 | Zero duplication | No rule in two files the SAME tool loads. CLAUDE.md & AGENTS.md are different tools - mirroring is allowed |
-| H9 | Dangerous commands denied | `rm -rf`, `git push --force`, `git reset --hard` in deny list |
-| H10 | Hooks configured | SessionStart + PreToolUse + Stop hooks |
-| H11 | Custom agents defined | Reviewer (Read+Bash only) + Coordinator |
 
 ### Scoring
 
@@ -158,8 +155,8 @@ Environment score = E_yes / 4. 0/4 → STOP; 1-3/4 → WARNING; 4/4 → PASS.
 Environment     = E_yes / 4
 OpenSpec        = O_yes / 8
 Superpowers     = S_yes / 9
-Harness         = H_yes / 11
-Overall         = (E + O + S + H) / 32
+Harness         = H_yes / 8
+Overall         = (E + O + S + H) / 29
 ```
 
 | Score | Level |
@@ -232,7 +229,7 @@ Project map + business context (1-3 sentences) + tech-stack table + development 
 
 ## Output Format (Audit)
 
-1. **Diagnostic table** - all 33 checks with YES / PARTIAL / NO + per-layer scores
+1. **Diagnostic table** - all 30 checks with YES / PARTIAL / NO + per-layer scores
 2. **Maturity grade** - overall % + level label
 3. **Before/after metrics** - context-efficiency ratio (target > 3x)
 4. **Top 3 issues** - root cause + Fix reference + impact estimate
@@ -258,9 +255,9 @@ Project map + business context (1-3 sentences) + tech-stack table + development 
 | specs/ at root level | Move to `openspec/specs/` (unified entry) |
 
 
-## Audit Check Notes (33-check full audit)
+## Audit Check Notes (30-check full audit)
 
-> The CLI `check` (25 items) is automatable. The full 33-check audit is AI-driven
+> The CLI `check` (24 items) is automatable. The full 30-check audit is AI-driven
 > (SKILL.md audit mode). These notes guide the AI's judgment on nuanced checks.
 
 ### H4: Git worktree isolation
@@ -272,7 +269,7 @@ Project map + business context (1-3 sentences) + tech-stack table + development 
 - **No git at all**: WARN (not FAIL) - "No git repo: version control recommended but
   not blocking for scaffold/audit phase."
 
-### S7/H10: Hooks
+### S7: Hooks
 - The scaffold generates **echo stubs** by design in `.claude/settings.json`:
   `SessionStart`, `PreToolUse` (Edit|Write), `Stop`. These are **placeholders** for
   the user to replace with real quality gates (e.g. `pnpm lint`, `mvn -q compile`).

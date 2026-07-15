@@ -24,7 +24,7 @@ Both editions scaffold, audit, and restructure a project's AI-collaboration stru
 | Mode | Purpose |
 |:--|:--|
 | **scaffold** | Generate a complete new framework from scratch via `scaffold.sh` |
-| **audit** | 33-check maturity scoring (E1–E4, O1–O8, S1–S9, H1–H11) |
+| **audit** | 30-check maturity scoring (E1–E4, O1–O8, S1–S9, H1–H8) |
 | **restructure** | Split a monolithic `CLAUDE.md` / `AGENTS.md` into per-stack agents + optimize |
 
 **Core Philosophy:**
@@ -34,7 +34,7 @@ Both editions scaffold, audit, and restructure a project's AI-collaboration stru
 
 **Primary use case: one-person team (OPC) taking over multiple frontend-backend separated legacy projects already in production.** The skill set provides:
 
-- **33-check audit** to diagnose what each legacy project is missing (specs? tests? agent separation? build verification?)
+- **30-check audit** to diagnose what each legacy project is missing (specs? tests? agent separation? build verification?)
 - **Restructure mode** to split a monolithic `CLAUDE.md`/`AGENTS.md` into per-stack agents without disrupting existing code
 - **Legacy-aware TDD** (characterization tests + debt logging) so you can safely modify untested code without freezing
 - **Cross-stack coordination** (LoopForge coordination docs + workset + OpenSpec `--goal` tags) so a one-person team can orchestrate frontend + backend changes across separate repos
@@ -123,7 +123,7 @@ Beyond the default scaffold, `scaffold.sh` ships nine more subcommands (run dire
 | `contract [--force] <change-dir>` | Auto-generate `execution-contract.md` from planning artifacts |
 | `restructure [project]` | Analyze a monolithic entry file and plan a per-stack split |
 
-> `check` runs an automatable subset (25 items: 3 env self-check + 22 structure) and prints PASS/PARTIAL/FAIL + a maturity score; ask the skill for the full 33-check semantic audit. `tokens` measures the O7 CJK overhead per file (`CJK_THRESHOLD` env, default 10%).
+> `check` runs an automatable subset (24 items: 3 env self-check + 21 structure) and prints PASS/PARTIAL/FAIL + a maturity score; ask the skill for the full 30-check semantic audit. `tokens` measures the O7 CJK overhead per file (`CJK_THRESHOLD` env, default 10%).
 
 ### What `scaffold.sh` generates
 
@@ -158,15 +158,15 @@ Then fill `[BRACKETS]` placeholders in `openspec/project.md`, `openspec/specs/*`
 
 ## Audit an existing project
 
-Trigger the skill (e.g. "audit my project structure"). It runs Phase 0 (environment E1–E4) + Phase 1 (33 checks) and outputs a diagnostic table, maturity grade, top issues, and an action plan.
+Trigger the skill (e.g. "audit my project structure"). It runs Phase 0 (environment E1–E4) + Phase 1 (30 checks) and outputs a diagnostic table, maturity grade, top issues, and an action plan.
 
-> Codex note: `scaffold.sh check` is dual-source - it checks `AGENTS.md` first, then `.claude/` as fallback. A Codex-only project (no `.claude/`) passes E3/E4/S4/S5/S6/S8/S8b/H9 via `AGENTS.md`, no false PARTIAL/FAIL.
+> Codex note: `scaffold.sh check` is dual-source - it checks `AGENTS.md` first, then `.claude/` as fallback. A Codex-only project (no `.claude/`) passes E3/E4/S4/S5/S6/S8/S8b via `AGENTS.md`, no false PARTIAL/FAIL.
 
 ### Maturity scoring
 
 ```
-Environment = E/4 · OpenSpec = O/8 · Superpowers = S/9 · Harness = H/11
-Overall = (E + O + S + H) / 32
+Environment = E/4 · OpenSpec = O/8 · Superpowers = S/9 · Harness = H/8
+Overall = (E + O + S + H) / 29
 ```
 
 | Score | Level |

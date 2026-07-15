@@ -48,7 +48,7 @@ _CURRENT_TEST="Codex scaffold generates project"
 # Key files exist
 for f in openspec/guard.sh openspec/ensure-contract-fresh.sh openspec/build-contract.sh \
          openspec/loop-state.yaml openspec/validate-artifacts.py openspec/verify.config.yaml \
-         openspec/changes/_template/proposal.md openspec/changes/_template/spec.md \
+         openspec/changes/_template/proposal.md openspec/changes/_template/specs/capability/spec.md \
          openspec/changes/_template/execution-contract.md; do
   _CURRENT_TEST="CC: $f exists"
   assert_file_exists "$CC_PROJ/$f" "$_CURRENT_TEST"

@@ -2092,7 +2092,7 @@ __GUIDE_ZH__
   if has frontend || has frontend-mobile; then echo "     + frontend-design skill"; fi
   echo "  4. Fill [BRACKETS] placeholders in openspec/project.md, openspec/specs/*, and per-stack CLAUDE.md/AGENTS.md"
   echo "  5. Edit openspec/verify.config.yaml - set each stack build/test commands for /opsx:verify (L1 build / L3 test)"
-  echo "  6. Run the loopforge audit (33 checks) to verify maturity"
+  echo "  6. Run the loopforge audit (30 checks) to verify maturity"
 }
 
 # ---------------- subcommand: check (自检 + LoopForge audit) ----------------
@@ -2223,14 +2223,17 @@ PY
     report PARTIAL "E3+ verify skill missing (re-run scaffold.sh to create)"
   fi
   local _s6=0 _s6note=""
+  # S6: permissions config + dangerous-command gating (merged from former H9)
   { [[ -f AGENTS.md ]] && grep -qiE 'sandbox|approval|permission' AGENTS.md; } && { _s6=1; _s6note="AGENTS.md sandbox/approval"; } || true
+  { [[ -f AGENTS.md ]] && grep -qiE 'rm -rf|push --force|reset --hard' AGENTS.md; } && { _s6=1; _s6note="${_s6note:+$_s6note + }dangerous-cmd gating"; } || true
   if [[ -f .claude/settings.json ]]; then
     if ! command -v python3 >/dev/null 2>&1; then _s6note="${_s6note:+$_s6note + }settings.json (no python3)"
     elif json_ok .claude/settings.json; then _s6=1; _s6note="${_s6note:+$_s6note + }.claude/settings.json"
+      { grep -q 'rm -rf' .claude/settings.json 2>/dev/null && grep -q 'push --force' .claude/settings.json 2>/dev/null; } && _s6note="$_s6note + deny list (rm -rf, push --force)" || true
     else _s6note="settings.json (invalid JSON)"; fi
   fi
-  if [[ $_s6 -eq 1 ]]; then report PASS "S6 permissions ($_s6note)"
-  else report PARTIAL "S6 permissions (note sandbox/approval in AGENTS.md, or add .claude/settings.json for Claude)"; fi
+  if [[ $_s6 -eq 1 ]]; then report PASS "S6 permissions & dangerous-command gating ($_s6note)"
+  else report PARTIAL "S6 permissions (add sandbox/approval + dangerous-cmd gating to AGENTS.md, or .claude/settings.json with allow/deny lists)"; fi
   local _s4=0 rules=0
   { [[ -f AGENTS.md ]] && grep -qiE '## Conventions|## Coding Rules|naming|kebab-case' AGENTS.md; } && _s4=1 || true
   while IFS= read -r _; do rules=$((rules+1)); done < <(find .claude/rules -name '*.md' 2>/dev/null)
@@ -2297,7 +2300,7 @@ PY
     fi
   fi
 
-  # H1 / H5 / H2 / H9
+  # H1 / H5 / H2
   local ag=0
   while IFS= read -r _; do ag=$((ag+1)); done < <(find . -mindepth 2 -maxdepth 2 -name CLAUDE.md -not -path './.claude/*' 2>/dev/null)
   [[ $ag -gt 0 ]] && report PASS "H1 per-stack Agent CLAUDE.md ($ag)" || report PARTIAL "H1 no per-stack Agent CLAUDE.md"
@@ -2307,14 +2310,11 @@ PY
     if [[ $lc -le 120 ]]; then report PASS "H5 root CLAUDE.md nav hub ($lc lines)"; else report PARTIAL "H5 root CLAUDE.md ($lc lines > 120; trim to nav hub)"; fi
   else report FAIL "H5 root CLAUDE.md (missing)"; fi
   if grep -rq 'openspec/specs' . --include='*.md' 2>/dev/null; then report PASS "H2 agents reference openspec/specs"; else report PARTIAL "H2 no openspec/specs references found"; fi
-  local _h9=0
-  { [[ -f .claude/settings.json ]] && grep -q 'rm -rf' .claude/settings.json 2>/dev/null && grep -q 'push --force' .claude/settings.json 2>/dev/null; } && _h9=1 || true
-  { [[ -f AGENTS.md ]] && grep -qiE 'rm -rf|push --force|reset --hard|sandbox|approval' AGENTS.md; } && _h9=1 || true
-  [[ $_h9 -eq 1 ]] && report PASS "H9 dangerous commands gated (sandbox/approval or deny list)" || report PARTIAL "H9 dangerous-command gating (gate rm -rf / git push --force via sandbox or .claude/settings.json)"
+  # H9 removed: merged into S6 (permissions & dangerous-command gating)
 
   # H-legacy: outstanding technical-debt entries (MOD-6c)
   local _debt=0
-  _debt=$(grep -rh '\[DEBT\]' openspec/changes/*/debt.md 2>/dev/null | wc -l | tr -d ' ')
+  _debt=$({ grep -rh '\[DEBT\]' openspec/changes/*/debt.md 2>/dev/null || true; } | wc -l | tr -d ' ')
   if [[ $_debt -gt 0 ]]; then
     report PARTIAL "H-legacy: $_debt technical-debt entries (revisit when test harness added)"
   else
@@ -2323,7 +2323,7 @@ PY
 
   echo ""
   _score "$pass" "$partial" "$fail" "$total"
-  echo "    Tip: ask the loopforge skill for a full 33-check audit + remediation plan."
+  echo "    Tip: ask the loopforge skill for a full 30-check audit + remediation plan."
 }
 
 _score() {

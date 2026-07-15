@@ -39,7 +39,7 @@
 | 自检环境 | `./scaffold.sh check` | "自检 loopforge-codex 环境" |
 | 审计项目合规度 | `./scaffold.sh check ./myapp` | "审计 ./myapp 的 OSH 合规度" |
 | 拆分单体入口文件 | skill restructure 模式 | "把 AGENTS.md 拆成按栈的 agent" |
-| 全量 33 项审计 | skill audit 模式 | "对项目做完整 33 项审计" |
+| 全量 30 项审计 | skill audit 模式 | "对项目做完整 30 项审计" |
 
 > **如何触发:** 把 `loopforge-codex/` 放进 `~/.codex/skills/loopforge-codex/` 后重启 Codex,skill 会按 `description` 自动激活。也可用 `$loopforge-codex` 显式调用,或直接说"用 loopforge-codex 给 X 搭脚手架",AI 会选对应模式或 CLI 执行。
 
@@ -93,7 +93,7 @@ cd ./myproject
 > 老项目在 `./legacy`，有个单体 `AGENTS.md`，想接入 loop 工程。先看现状。
 
 **AI**:
-1. **审计现状**：① `./scaffold.sh check`（环境自检）；② `./scaffold.sh check ./legacy`（结构合规度）；③ 进 skill audit 模式做全量 33 项审计。产出：诊断表 + 成熟度 + Top 问题 + 行动计划（按 Phase 5 顺序）。
+1. **审计现状**：① `./scaffold.sh check`（环境自检）；② `./scaffold.sh check ./legacy`（结构合规度）；③ 进 skill audit 模式做全量 30 项审计。产出：诊断表 + 成熟度 + Top 问题 + 行动计划（按 Phase 5 顺序）。
 2. **拆分单体入口**（skill **restructure** 模式）：
    - 读单体 `AGENTS.md`，按栈分类段落（Java 段落->backend、Vue 段落->frontend、API 路径->`openspec/specs/`、构建命令按工具分流）；
    - 跟用户确认技术栈与目录映射；
@@ -101,7 +101,7 @@ cd ./myproject
    - 重写根 `AGENTS.md` 为导航中心（≤120 行）；
    - 删重复、校验无内容丢失、无死文件。
 
-> **`check` 是 Codex-aware 的**：E3 探测根 `AGENTS.md`、E4 探测前端 `AGENTS.md` 的设计指引、H9 探测 `AGENTS.md` 里的 sandbox/approval 关键词；S4/S5/S6/S8 同理--`.claude/` 路径（`settings.json`/`rules`/`skills`/`agents`）只是 Claude 的可选加分项。纯 Codex 项目只要 `AGENTS.md` 写到位，这些项都能 PASS，不存在 `.claude` 误报，分数如实看即可。
+> **`check` 是 Codex-aware 的**：E3 探测根 `AGENTS.md`、E4 探测前端 `AGENTS.md` 的设计指引、S6 探测 `AGENTS.md` 里的 sandbox/approval + 危险命令拦截关键词；S4/S5/S8 同理--`.claude/` 路径（`settings.json`/`rules`/`skills`/`agents`）只是 Claude 的可选加分项。纯 Codex 项目只要 `AGENTS.md` 写到位，这些项都能 PASS，不存在 `.claude` 误报，分数如实看即可。
 > 纯 Codex：以 `AGENTS.md` 为主拆分对象；若同时用 Claude，再镜像出对应 `CLAUDE.md`。
 
 ### 对话 2 · 填充内容 + 为已有代码补 spec（AI 主动执行）
@@ -734,9 +734,9 @@ $openspec-archive-change             # verify.md overall=PASS → 归档
 | 66–90% | 质量级 |
 | > 90% | 工业级 |
 
-> `check` 是 CLI 快照(含 O7 CJK 扫描、S5 Superpowers 检测、O4 归档错位检测等可自动判定项);完整 33 项审计(含 S3 工作流、H4 工作树等需语义判断的项)请让 AI 进 skill audit 模式。
+> `check` 是 CLI 快照(含 O7 CJK 扫描、S5 Superpowers 检测、O4 归档错位检测等可自动判定项);完整 30 项审计(含 S3 工作流、H4 工作树等需语义判断的项)请让 AI 进 skill audit 模式。
 >
-> Codex 提示:`check` 是 Codex-aware 的——E3/E4/H9 经 `AGENTS.md` 判定(非 `.claude` 误报),S5 也优先看各栈 `AGENTS.md` 的深度指引(`.claude/skills/` 仅 Claude 加分项)。纯 Codex 项目无需扣项,分数如实反映 `AGENTS.md` 是否写到位。
+> Codex 提示:`check` 是 Codex-aware 的——E3/E4/S6 经 `AGENTS.md` 判定(非 `.claude` 误报),S5 也优先看各栈 `AGENTS.md` 的深度指引(`.claude/skills/` 仅 Claude 加分项)。纯 Codex 项目无需扣项,分数如实反映 `AGENTS.md` 是否写到位。
 
 ---
 

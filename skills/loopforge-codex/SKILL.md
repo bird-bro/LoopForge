@@ -26,7 +26,7 @@ Key principles: Spec as Code. TDD enforced (not a slogan). Discipline baked into
 | Mode | When to use | How |
 |:--|:--|:--|
 | **scaffold** | Existing code, no AGENTS.md / openspec/ | Run `scaffold.sh --tools codex` → complete framework |
-| **audit** | Existing project, check health | Run 33 checks, score maturity, report gaps |
+| **audit** | Existing project, check health | Run 30 checks, score maturity, report gaps |
 | **restructure** | Monolithic `AGENTS.md` (or `CLAUDE.md`) or low audit score | Split into per-stack agents + apply Phase 5 order |
 
 ## Execution Instructions
@@ -52,9 +52,9 @@ The generator ships with ten subcommands (run directly, or ask the AI to run the
 | `scaffold.sh contract [--force] <change-dir>` | Auto-generate `execution-contract.md` from planning artifacts |
 | `scaffold.sh restructure [project]` | Analyze a monolithic entry file and plan a per-stack split |
 
-`check` prints PASS / PARTIAL / FAIL per check plus a maturity score (an automatable subset of the 33; use audit mode for the full set). It also auto-measures **O7** - CJK char ratio in auto-loaded files, threshold via the `CJK_THRESHOLD` env var (default 10). For per-file token counts and CJK breakdown, run `scaffold.sh tokens`. See `USAGE-PLAYBOOK-CODEX.md` for dialogue-style Codex usage.
+`check` prints PASS / PARTIAL / FAIL per check plus a maturity score (an automatable subset of the 30; use audit mode for the full set). It also auto-measures **O7** - CJK char ratio in auto-loaded files, threshold via the `CJK_THRESHOLD` env var (default 10). For per-file token counts and CJK breakdown, run `scaffold.sh tokens`. See `USAGE-PLAYBOOK-CODEX.md` for dialogue-style Codex usage.
 
-> `check` (in scaffold.sh) is Codex-aware: its E3/E4/S4/S5/S6/S8/H1/H5/H9 lines probe `AGENTS.md` (Codex entry) and fall back to `.claude/` structures only when Claude Code is enabled (`--tools codex,claude`). In a Codex-only project they score against `AGENTS.md`, not `.claude/`. For the full 33-check semantic audit, use the criteria below.
+> `check` (in scaffold.sh) is Codex-aware: its E3/E4/S4/S5/S6/S8/H1/H5 lines probe `AGENTS.md` (Codex entry) and fall back to `.claude/` structures only when Claude Code is enabled (`--tools codex,claude`). In a Codex-only project they score against `AGENTS.md`, not `.claude/`. For the full 30-check semantic audit, use the criteria below.
 
 ---
 
@@ -110,7 +110,7 @@ Environment score = E_yes / 4. 0/4 → STOP; 1-3/4 → WARNING; 4/4 → PASS.
 
 > Note: `scaffold.sh check` is Codex-aware - E3 probes root `AGENTS.md` and E4 probes the frontend `AGENTS.md` design guidance (Claude constructs are only checked when `--tools codex,claude`). E3+ checks for the verify skill (`.codex/skills/openspec-verify/` or `.claude/commands/opsx/verify.md`) - created by loopforge, not `openspec init`. Use the criteria above for the full semantic audit.
 
-### Phase 1: 33 Checks
+### Phase 1: 30 Checks
 
 #### 1.1 OpenSpec - "Define Direction" (O1-O8)
 
@@ -134,13 +134,13 @@ Environment score = E_yes / 4. 0/4 → STOP; 1-3/4 → WARNING; 4/4 → PASS.
 | S3 | Discipline workflow | 5 steps present as instructions in `AGENTS.md`: brainstorm → writing-plans → executing-plans → code-review → verification. Driven by `$skill-name` (`$openspec-propose` / `$openspec-apply-change` / `$openspec-verify` / `$openspec-archive-change`) or `openspec` CLI |
 | S4 | Project rules | Universal conventions documented in root `AGENTS.md` and/or `openspec/specs/` (Codex has no `.claude/rules/` auto-load) |
 | S5 | Domain guidance | Stack-specific deep guidance lives in the per-stack `AGENTS.md`; global Codex skills may live in `~/.codex/skills/` |
-| S6 | Permissions configured | Codex sandbox/permission profile + `config.toml` `[projects.*]` trust set; dangerous ops gated by sandbox |
+| S6 | Permissions & dangerous-command gating | Codex sandbox/permission profile + `config.toml` `[projects.*]` trust set; `rm -rf`, `git push --force`, `git reset --hard` denied by sandbox/approval (absorbs former H9) |
 | S7 | Lifecycle hooks | Codex `notify` / app hooks configured as needed (Codex has no `.claude` SessionStart/PreToolUse/Stop hooks) |
 | S8 | Reviewer / Coordinator / Implementer roles | Reviewer (read+execute only, no edits) + Coordinator + Implementer (SDD task dispatch) encoded as role instructions in `AGENTS.md` or Codex subagents |
 | S8b | SDD artifacts | `openspec/sdd/` has `implementer-prompt.md` + `reviewer-prompt.md` + `progress.md` (subagent-driven development templates) |
 | S9 | Context budget | Agent `AGENTS.md` < 3K tokens; deep details in `openspec/` for on-demand load |
 
-#### 1.3 Harness - "Orchestrate Collaboration" (H1-H11)
+#### 1.3 Harness - "Orchestrate Collaboration" (H1-H8)
 
 | # | Check | Criteria (Codex) |
 |:--|:--|:--|
@@ -152,9 +152,6 @@ Environment score = E_yes / 4. 0/4 → STOP; 1-3/4 → WARNING; 4/4 → PASS.
 | H6 | Session continuity | Codex goal/plan tracking + session history keep continuity (no `/resume` `/branch` `/rewind`) |
 | H7 | No dead files | Every `.md` has a clear load path (`AGENTS.md`→Codex, `CLAUDE.md`→Claude Code, specs→all). `CLAUDE.md` is NOT dead if Claude Code is used; in Codex-only it is optional |
 | H8 | Zero duplication | No rule in two files the SAME tool loads. `AGENTS.md` & `CLAUDE.md` are different tools - mirroring is allowed |
-| H9 | Dangerous commands gated | `rm -rf`, `git push --force`, `git reset --hard` denied by Codex sandbox / approval policy |
-| H10 | Lifecycle hooks | Codex notify/app hooks configured as needed |
-| H11 | Reviewer / Coordinator defined | Reviewer (read+execute only) + Coordinator as role instructions or subagents |
 
 ### Scoring
 
@@ -162,8 +159,8 @@ Environment score = E_yes / 4. 0/4 → STOP; 1-3/4 → WARNING; 4/4 → PASS.
 Environment     = E_yes / 4
 OpenSpec        = O_yes / 8
 Superpowers     = S_yes / 9
-Harness         = H_yes / 11
-Overall         = (E + O + S + H) / 32
+Harness         = H_yes / 8
+Overall         = (E + O + S + H) / 29
 ```
 
 | Score | Level |
@@ -235,7 +232,7 @@ Project map + business context (1-3 sentences) + tech-stack table + development 
 
 ## Output Format (Audit)
 
-1. **Diagnostic table** - all 33 checks with YES / PARTIAL / NO + per-layer scores
+1. **Diagnostic table** - all 30 checks with YES / PARTIAL / NO + per-layer scores
 2. **Maturity grade** - overall % + level label
 3. **Before/after metrics** - context-efficiency ratio (target > 3x)
 4. **Top 3 issues** - root cause + Fix reference + impact estimate
@@ -262,9 +259,9 @@ Project map + business context (1-3 sentences) + tech-stack table + development 
 | Using `/opsx:` slash commands in Codex | Invoke loop skills via `$skill-name` (`$openspec-apply-change`, `$openspec-propose`, `$openspec-archive-change`) or the `openspec` CLI |
 
 
-## Audit Check Notes (33-check full audit)
+## Audit Check Notes (30-check full audit)
 
-> The CLI `check` (25 items) is automatable. The full 33-check audit is AI-driven
+> The CLI `check` (24 items) is automatable. The full 30-check audit is AI-driven
 > (SKILL.md audit mode). These notes guide the AI's judgment on nuanced checks.
 
 ### H4: Git worktree isolation
@@ -276,7 +273,7 @@ Project map + business context (1-3 sentences) + tech-stack table + development 
 - **No git at all**: WARN (not FAIL) - "No git repo: version control recommended but
   not blocking for scaffold/audit phase."
 
-### S7/H10: Hooks
+### S7: Hooks
 - The scaffold generates **echo stubs** by design in `.claude/settings.json`:
   `SessionStart`, `PreToolUse` (Edit|Write), `Stop`. These are **placeholders** for
   the user to replace with real quality gates (e.g. `pnpm lint`, `mvn -q compile`).
