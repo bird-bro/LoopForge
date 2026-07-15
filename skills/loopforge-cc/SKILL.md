@@ -114,7 +114,7 @@ Environment score = E_yes / 4. 0/4 → STOP; 1-3/4 → WARNING; 4/4 → PASS.
 |:--|:--|:--|
 | O1 | Shared spec docs | `openspec/specs/` has `api/spec.md` + `data/spec.md` + `errors/spec.md` |
 | O2 | API contract authoritative | All agents reference it; frontend mocks from it; backend implements to it |
-| O3 | Delta proposal templates | `openspec/changes/_template/` with `proposal.md` + `spec.md` (WHEN/THEN) |
+| O3 | Delta proposal templates | `openspec/changes/_template/` with `proposal.md` + `specs/<capability>/spec.md` (## ADDED Requirements) |
 | O4 | Change archive | `openspec/archive/` for completed proposals |
 | O5 | Project overview | `openspec/project.md`: tech stack, module map, architecture - no coding conventions |
 | O6 | Boundary clear | `openspec/README.md` explains structure: `specs/` inside `openspec/`, unified entry |
@@ -296,7 +296,7 @@ Project map + business context (1-3 sentences) + tech-stack table + development 
 - [ ] Each sub-CLAUDE.md has Role + Overview + Before You Code + Standards + Superpowers + TDD + Build
 - [ ] Cross-domain prohibition explicit in every sub-CLAUDE.md
 - [ ] `openspec/specs/api/spec.md` authoritative for all agents
-- [ ] `openspec/changes/_template/` has `proposal.md` + `spec.md`
+- [ ] `openspec/changes/_template/` has `proposal.md` + `specs/<capability>/spec.md`
 - [ ] `.claude/settings.json` has permissions + hooks
 - [ ] Reviewer tools = `["Read", "Bash"]` only
 - [ ] Rules use globs; skills ≤ 300 lines each

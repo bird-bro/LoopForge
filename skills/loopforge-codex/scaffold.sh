@@ -632,7 +632,7 @@ __LT__
 
   # ---------- 1. openspec/  (WHAT - shared truth) ----------
   echo "==> Creating openspec/ (WHAT)"
-  mkdir -p openspec/specs openspec/changes/_template openspec/archive
+  mkdir -p openspec/specs openspec/changes/_template/specs/capability openspec/archive
 
   cat <<'EOF' | subst | write_if_absent openspec/README.md
 # OpenSpec - Shared Truth (WHAT)
@@ -696,51 +696,75 @@ EOF
   cat <<'EOF' | write_if_absent openspec/specs/api/spec.md
 # API Contract
 
-> Authoritative. Frontend mocks from this; backend implements to this.
+## Purpose
+Authoritative API contract. Frontend mocks from this; backend implements to this. Defines base URL, response envelope, and endpoint conventions.
 
-## Conventions
-- Base URL: `/api/v1`
-- Response envelope: `{ "code": 0, "data": {}, "message": "" }`
+## Requirements
 
-## Endpoints
+### Requirement: API Response Envelope
+All API responses MUST use the standard envelope `{ "code": 0, "data": {}, "message": "" }`. Base URL: `/api/v1`.
 
-### [Resource]
+#### Scenario: Successful response
+- **WHEN** a request succeeds
+- **THEN** returns `code: 0` with the typed payload in `data`
 
-#### WHEN [scenario / actor intent]
-- `GET /api/v1/[resource]` - [description]
-  - Response: `[field]: [type]`
+#### Scenario: Error response
+- **WHEN** a request fails
+- **THEN** returns a non-zero `code` with an error `message` and `data: null`
 
-#### THEN [expected outcome]
-- Returns `code: 0` with `[payload]`
+### Requirement: Endpoint Documentation
+Each endpoint MUST be documented as a Requirement with WHEN/THEN scenarios. Add new Requirements for each resource.
+
+#### Scenario: Resource retrieval
+- **WHEN** a client requests `GET /api/v1/[resource]`
+- **THEN** returns `code: 0` with `[payload]`
 EOF
 
   cat <<'EOF' | write_if_absent openspec/specs/data/spec.md
 # Data Model
 
-## Entities
+## Purpose
+Defines data models, entity schemas, and database conventions for all stacks.
 
-### [Entity]
-| Field | Type | Constraints | Notes |
-|:--|:--|:--|:--|
-| id | bigint | PK, auto-increment | |
-| created_at | datetime | not null | UTC |
+## Requirements
+
+### Requirement: Entity Schema Documentation
+Each core entity MUST be documented with its fields, types, and constraints.
+
+#### Scenario: Standard entity fields
+- **WHEN** a new entity is defined
+- **THEN** it includes at minimum `id` (bigint, PK, auto-increment) and `created_at` (datetime, not null, UTC)
 EOF
 
   cat <<'EOF' | write_if_absent openspec/specs/errors/spec.md
 # Error Handling
 
-## Error Codes
-| Code | HTTP | Meaning |
-|:--|:--|:--|
-| 0 | 200 | Success |
-| 40001 | 400 | [Bad request - validation] |
-| 40401 | 404 | [Resource not found] |
-| 50001 | 500 | [Internal error] |
+## Purpose
+Defines error codes, HTTP status mapping, and error response format for all API responses.
 
-## Error Response
-```json
-{ "code": 40001, "data": null, "message": "[description]" }
-```
+## Requirements
+
+### Requirement: Error Code Scheme
+Error codes MUST follow a numeric scheme mapping to HTTP statuses: `0` = success (200), `4xxxx` = client errors (4xx), `5xxxx` = server errors (5xx).
+
+#### Scenario: Success
+- **WHEN** a request succeeds
+- **THEN** returns `code: 0` (HTTP 200)
+
+#### Scenario: Client error
+- **WHEN** a request has invalid parameters
+- **THEN** returns `code: 40001` (HTTP 400) with a descriptive message
+
+#### Scenario: Server error
+- **WHEN** an internal error occurs
+- **THEN** returns `code: 50001` (HTTP 500) with a generic message
+
+### Requirement: Error Response Format
+All error responses MUST use the standard envelope with `data: null` and a human-readable `message`.
+
+#### Scenario: Error envelope
+- **WHEN** any error occurs
+- **THEN** response body is `{ "code": <errorCode>, "data": null, "message": "<description>" }`
 EOF
 
   cat <<'EOF' | write_if_absent openspec/changes/_template/proposal.md
@@ -749,7 +773,7 @@ EOF
 ## Why
 [Business reason - what problem this solves]
 
-## What
+## What Changes
 [Summary of the change]
 
 ## Affected Stacks
@@ -772,24 +796,16 @@ EOF
 - [Risk] → [Mitigation]
 EOF
 
-  cat <<'EOF' | write_if_absent openspec/changes/_template/spec.md
-# Spec Delta: [Change Name]
+  cat <<'EOF' | write_if_absent openspec/changes/_template/specs/capability/spec.md
+## ADDED Requirements
 
-## Data Model
-[New / changed entities - reference `specs/data/spec.md`]
+### Requirement: [requirement name]
+<!-- Requirement description with MUST / SHALL keywords -->
 
-## API
-[New / changed endpoints - reference `specs/api/spec.md`]
-
-## Business Rules
-[Rules introduced or changed]
-
-## Error Handling
-[New error codes - reference `specs/errors/spec.md`]
-
-## Verification Scenarios
-### WHEN [scenario]
-THEN [expected outcome]
+#### Scenario: [scenario name]
+- **WHEN** [trigger condition]
+- **THEN** [expected outcome]
+- **AND** [additional assertion, optional]
 EOF
 
   cat <<'EOF' | write_if_absent openspec/changes/_template/debt.md
@@ -807,7 +823,7 @@ EOF
 
 Active work lives here. Each proposal is a directory containing:
 - `proposal.md` - Why / What / Scope / Success Criteria / Constraints / Risks
-- `spec.md` - Data Model / API / Business Rules / Errors / WHEN-THEN verification
+- `specs/<capability>/spec.md` - delta spec (## ADDED/MODIFIED/REMOVED Requirements + ### Requirement: + #### Scenario:)
 
 Start from `_template/`. On completion, archive via `openspec archive <name>`.
 EOF
@@ -896,16 +912,16 @@ def validate_spec(path):
         return issues
     content = open(path, encoding='utf-8').read()
     delta_ops = ['ADDED', 'MODIFIED', 'REMOVED', 'RENAMED']
-    found_ops = [op for op in delta_ops if re.search(r'^###\s+' + op + r'\s*$', content, re.MULTILINE)]
+    found_ops = [op for op in delta_ops if re.search(r'^##\s+' + op + r'\s+Requirements\s*$', content, re.MULTILINE)]
     if not found_ops:
         issues.append(('ERROR', 'spec.md:deltas', 'No ADDED/MODIFIED/REMOVED/RENAMED section found'))
         return issues
     total = 0
     for op in found_ops:
-        section = extract_section(content, r'^###\s+' + op + r'\s*$', level=3)
+        section = extract_section(content, r'^##\s+' + op + r'\s+Requirements\s*$', level=2)
         if not section:
             continue
-        reqs = re.findall(r'^####\s+(.+?)\s*$', section, re.MULTILINE)
+        reqs = re.findall(r'^###\s+Requirement:\s*(.+?)\s*$', section, re.MULTILINE)
         seen = set()
         for name in reqs:
             total += 1
@@ -913,14 +929,14 @@ def validate_spec(path):
             if key in seen:
                 issues.append(('ERROR', 'spec.md:%s.%s' % (op.lower(), key), 'Duplicate: %s' % name))
             seen.add(key)
-            block = extract_section(section, r'^####\s+' + re.escape(name) + r'\s*$', level=4)
+            block = extract_section(section, r'^###\s+Requirement:\s*' + re.escape(name) + r'\s*$', level=3)
             if block:
                 if not re.search(r'\b(SHALL|MUST)\b', block, re.IGNORECASE):
                     issues.append(('ERROR', 'spec.md:%s.%s' % (op.lower(), key), '%s "%s" missing SHALL/MUST' % (op, name)))
                 if not re.search(r'(WHEN|Scenario|scenario)', block):
                     issues.append(('ERROR', 'spec.md:%s.%s' % (op.lower(), key), '%s "%s" has no scenario (WHEN/THEN)' % (op, name)))
     if total == 0:
-        issues.append(('ERROR', 'spec.md:deltas', 'Delta sections exist but no requirements (####) found'))
+        issues.append(('ERROR', 'spec.md:deltas', 'Delta sections exist but no requirements (### Requirement:) found'))
     elif total > MAX_DELTAS:
         issues.append(('WARNING', 'spec.md:deltas', 'Many deltas (%d > %d) - consider splitting' % (total, MAX_DELTAS)))
     return issues
@@ -1365,7 +1381,7 @@ check_schema_valid() {
   if [[ -d "$dir/specs" ]]; then
     grep -qrE '## Scenario:|WHEN|THEN' "$dir/specs/" 2>/dev/null || fail "specs/ has no WHEN/THEN scenarios"
   elif [[ -f "$dir/spec.md" ]]; then
-    grep -qE '## Scenario:|WHEN|THEN' "$dir/spec.md" 2>/dev/null || fail "spec.md has no WHEN/THEN scenarios"
+    grep -qE '## Scenario:|WHEN|THEN' "$dir"/specs/*/spec.md 2>/dev/null || fail "specs/*/spec.md has no WHEN/THEN scenarios"
   fi
 }
 
@@ -1868,7 +1884,7 @@ __COORD_TPL__
     echo ""
     echo "## Development Workflow"
     echo "### New Feature"
-    echo "1. Propose: \`openspec new change <name>\` → fill \`proposal.md\` + \`spec.md\` (WHEN/THEN); brainstorm/clarify first"
+    echo "1. Propose: \`openspec new change <name>\` → fill \`proposal.md\` + \`specs/<capability>/spec.md\` (## ADDED Requirements + WHEN/THEN); brainstorm/clarify first"
     if has backend && (has frontend || has frontend-mobile); then
       echo "2. Backend Agent: \`cd @@BACKEND_DIR@@\` → launch AI (codex/claude) → implement to spec (TDD)"
       echo "3. Frontend Agent (parallel): \`cd @@FRONTEND_DIR@@\` → launch AI → mock from spec → UI prototype → **user confirms** → implement"
@@ -2036,7 +2052,7 @@ cmd_check() {
   [[ -f openspec/specs/data/spec.md ]] && specs=$((specs+1))
   [[ -f openspec/specs/errors/spec.md ]] && specs=$((specs+1))
   case $specs in 3) report PASS "O1 specs api/data/errors";; 1|2) report PARTIAL "O1 specs ($specs/3: api/data/errors)";; *) report FAIL "O1 specs api/data/errors";; esac
- if [[ -f openspec/changes/_template/proposal.md && -f openspec/changes/_template/spec.md ]]; then report PASS "O3 changes/_template (proposal+spec)"; else report FAIL "O3 changes/_template"; fi
+ if [[ -f openspec/changes/_template/proposal.md && -f openspec/changes/_template/specs/capability/spec.md ]]; then report PASS "O3 changes/_template (proposal+spec)"; else report FAIL "O3 changes/_template"; fi
   # O4 - canonical archive is openspec/archive/; archives misplaced in
   # openspec/changes/archive/ is common drift - a dir-existence-only check hides it.
   local _o4real=0 _o4mis=0 _o4e
