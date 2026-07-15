@@ -127,7 +127,6 @@ cd ./myproject
 3. 输出已知问题清单 + 优先级建议，例如：
    - Superpowers 纪律已写入 AGENTS.md 但技能未安装 -> brainstorm/plan/review 靠 AI 遵循指令
    - 项目根非 git 仓库 -> worktree 隔离不可用
-   - hooks 为 echo 桩 -> 需替换为真实 lint/format 闸门
    - specs/*.md 为模板骨架 -> 随首个 `$openspec-propose` 逐步填充
 4. **起点 B 额外**：重构后重跑 `./scaffold.sh check ./legacy` + 全量审计，对比前后成熟度，确认：无重复、无死文件、各 agent 含必备 8 段、跨域禁令显式、根 `AGENTS.md` ≤120 行。
 

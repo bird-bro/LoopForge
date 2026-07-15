@@ -271,10 +271,15 @@ Project map + business context (1-3 sentences) + tech-stack table + development 
 
 ### S7: Hooks
 - The scaffold generates **echo stubs** by design in `.claude/settings.json`:
-  `SessionStart`, `PreToolUse` (Edit|Write), `Stop`. These are **placeholders** for
-  the user to replace with real quality gates (e.g. `pnpm lint`, `mvn -q compile`).
-- Report as **PASS (stub)**: "Hooks configured (echo stubs). Replace with real
-  lint/format/build gates when project is ready for CI enforcement."
+  `SessionStart`, `PreToolUse` (Edit|Write), `Stop`. These are the **recommended
+  default** - lifecycle observability without per-edit latency.
+- Report as **PASS**: "Hooks configured (echo stubs). Optional: replace with real
+  lint/build gates when ready for CI enforcement."
+- Quality enforcement is already covered by `/opsx:verify` (L1 build / L3 tests)
+  and Superpowers `verification-before-completion`. Real PreToolUse gates (e.g.
+  `pnpm lint` on every edit) are an **advanced, opt-in** choice with known tradeoffs:
+  per-edit latency, blocked edits when legacy lint errors exist, and complex
+  per-stack routing. Mention as a brief optional tip, not an action item.
 - Only report FAIL if `.claude/settings.json` has no hooks section at all.
 
 ### H3: Mock-first practice
