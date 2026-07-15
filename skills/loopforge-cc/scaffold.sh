@@ -2315,8 +2315,9 @@ PY
   # H-legacy: technical-debt entries (MOD-6c)
   # Having [DEBT] entries is Iron-Law compliant (explicitly tracked, not silent).
   # Report PASS either way; the message notes tracked debt for revisit scheduling.
+  # Exclude _template/ - its placeholder [DEBT] line is an example, not real debt.
   local _debt=0
-  _debt=$({ grep -rh '\[DEBT\]' openspec/changes/*/debt.md 2>/dev/null || true; } | wc -l | tr -d ' ')
+  _debt=$({ find openspec/changes -name debt.md ! -path '*/_template/*' -exec grep -h '\[DEBT\]' {} + 2>/dev/null || true; } | wc -l | tr -d ' ')
   if [[ $_debt -gt 0 ]]; then
     report PASS "H-legacy: $_debt tracked debt entries (Iron Law compliant - revisit when test harness added)"
   else
