@@ -275,7 +275,7 @@ cmd_restructure() {
     # Classify: check header text first (more reliable), then content keywords
     target=""
     if echo "$header" | grep -qiE 'business|context|project|overview|项目|业务'; then
-      target="root (nav hub) + project.md"
+      target="root (nav hub) + openspec/README.md ## Project Overview"
     elif echo "$header" | grep -qiE 'api|endpoint|route|接口'; then
       target="specs/api/spec.md"
     elif echo "$header" | grep -qiE 'error|错误|code'; then

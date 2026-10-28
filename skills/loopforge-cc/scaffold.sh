@@ -27,7 +27,7 @@ CJK_THRESHOLD="${CJK_THRESHOLD:-10}"
 # Override per-run: TOKEN_THRESHOLD=2000 ./scaffold.sh check ./myapp
 TOKEN_THRESHOLD="${TOKEN_THRESHOLD:-3000}"
 # LoopForge version - written into generated projects for traceability.
-LOOPFORGE_VERSION="${LOOPFORGE_VERSION:-2.1.0}"
+LOOPFORGE_VERSION="${LOOPFORGE_VERSION:-2.2.0}"
 
 usage() {
   cat <<'USG'
@@ -158,7 +158,12 @@ generate_scaffold() {
   if [[ $RUN_INIT -eq 1 ]]; then
     if command -v openspec >/dev/null 2>&1; then
       echo "==> Running: openspec init --tools $TOOLS"
-      openspec init --tools "$TOOLS" || echo "  warn: openspec init failed or already initialized"
+      # --no-copilot-cloud: non-interactive answer to the OpenSpec 1.15+ Copilot cloud prompt.
+      # Tradeoff: when github-copilot is not among --tools (always, today) OpenSpec prints a
+      # yellow "--copilot-cloud/--no-copilot-cloud was ignored..." note - cosmetic noise,
+      # chosen over a blocking TTY prompt mid-scaffold. --no-animation keeps CI logs clean.
+      openspec init --tools "$TOOLS" --no-copilot-cloud --no-animation \
+        || echo "  warn: openspec init failed or already initialized"
     else
       echo "  warn: openspec CLI not found."
       echo "        install: npm i -g @fission-ai/openspec@latest"
@@ -168,13 +173,14 @@ generate_scaffold() {
 
 
   # ---------- 0b. LoopForge runtime enhancements (/opsx:verify command + Superpowers triggers) ----------
-  # openspec init ships 5 commands (propose/apply/archive/sync/explore) but NOT /opsx:verify, and the
-  # generated propose/apply/archive are plain CLI flows with no Superpowers trigger / verify gate.
-  # LoopForge layers these on so the documented loop (propose->apply->verify->archive) is real.
+  # openspec init (1.15+) ships 5 command files (propose/apply/archive/sync/explore) but NOT
+  # /opsx:verify, and the generated propose/apply/archive are plain CLI flows with no
+  # Superpowers trigger / verify gate. LoopForge layers these on so the documented loop
+  # (propose->apply->verify->archive) is real.
   echo "==> Layering LoopForge runtime enhancements (verify config + report template; Claude commands + Codex skills)"
   # Capture verify body once - shared between Claude slash command and Codex skill.
-  # openspec init (v1.6.0) generates propose/apply/archive/explore/sync only - NO verify
-  # command/skill in any --tools mode. LoopForge creates it for both Claude and Codex.
+  # openspec init (1.15+, core profile) generates propose/apply/archive/explore/sync only -
+  # NO verify command/skill in any --tools mode. LoopForge creates it for both Claude and Codex.
   _LOOP_VERIFY_BODY=$(mktemp)
   cat > "$_LOOP_VERIFY_BODY" <<'__LOOPFORGE_VERIFY_BODY__'
 Three-layer verification for an OpenSpec change. Confirms the implementation actually satisfies the spec's WHEN/THEN scenarios, then writes a `verify.md` credential into the change directory that `/opsx:archive` checks before archiving.
@@ -223,7 +229,7 @@ Three-layer verification for an OpenSpec change. Confirms the implementation act
    - `root.path` (or `actionContext.allowedEditRoots[0]`) - project root, to locate `openspec/verify.config.yaml` (see step 4) and per-stack `CLAUDE.md`
    - `actionContext.allowedEditRoots` / stack hints - which stacks are affected
 
-   **Scope guard:** `actionContext.mode` is `repo-local` for normal changes (OpenSpec 1.6.0 removed the `workspace-planning` mode). If a change spans multiple stacks, identify all affected stacks from `allowedEditRoots`, the change's `design.md`, or `tasks.md` stack tags - do not run builds against stacks the change does not touch.
+   **Scope guard:** `actionContext.mode` is `repo-local` for normal changes (the `workspace-planning` mode was removed from OpenSpec). If a change spans multiple stacks, identify all affected stacks from `allowedEditRoots`, the change's `design.md`, or `tasks.md` stack tags - do not run builds against stacks the change does not touch.
 
 3. **Validate artifacts first (fail fast)**
 
@@ -498,6 +504,8 @@ __LOOPFORGE_ENSURE__
 <!-- LoopForge: superpowers-trigger-propose -->
 ## Superpowers Integration (auto-triggered - LoopForge loop start)
 
+> The OpenSpec **Planning boundary** (below) still governs: this section plans only; apply starts as its own step after the user approves the execution contract.
+
 Before writing artifacts, ground the spec in real requirements:
 1. **Activate `brainstorm`** - clarify goals/scope/edge cases with the user; ask questions; do NOT write the proposal until the user confirms understanding.
 2. **Use `writing-plans`** - structure confirmed requirements into proposal/design/tasks/spec; write concrete WHEN/THEN scenarios (these become /opsx:verify L2 cases later).
@@ -600,18 +608,18 @@ Check for `verify.md` in the change root:
 - **overall: PASS_WITH_ISSUES** -> warn PARTIALs, confirm before proceeding.
 - **overall: PASS** -> proceed.
 
-Read `verify.overall` from verify.md YAML frontmatter (written by /opsx:verify). Runs after the spec-sync assessment and before `mv` into archive/.
+Read `verify.overall` from verify.md YAML frontmatter (written by /opsx:verify). Runs after the spec-sync assessment and before `mv` into `openspec/changes/archive/`.
 Phase gate: run `bash openspec/guard.sh verifying archived <change-dir>`. Non-zero exit -> STOP. On PASS, update `openspec/loop-state.yaml`: set `phase: archived`. On FAIL or abandon: set `phase: abandoned`.
 
 ## Delta-Spec Sync (after archive move - prevents spec rot)
-After the change is moved to `archive/`, sync its delta specs into the main specs:
+After the change is moved to `changes/archive/`, sync its delta specs into the main specs:
 1. Read each `specs/*.md` (or `spec.md`) in the archived change directory.
 2. For each delta spec scenario, merge into the corresponding `openspec/specs/<type>/spec.md`:
    - **New scenarios**: append to the main spec with their WHEN/THEN.
    - **Modified scenarios**: replace the old version, keep the scenario name.
    - **Removed scenarios**: mark `~~deprecated~~` (do not delete - preserve history).
 3. Add a `<!-- synced from: <change-name> <date> -->` comment at each merge point.
-4. `openspec archive` already updates main specs on archive (OpenSpec 1.6.0); the `openspec-sync-specs` skill can assist with manual merge review. (The standalone `openspec sync` CLI was removed in 1.6.0.)
+4. `openspec archive` already updates main specs on archive; the `openspec-sync-specs` skill can assist with manual merge review. (There is no standalone `openspec sync` CLI subcommand - `sync` is an agent workflow.)
 5. Verify no conflicts: same scenario name with different WHEN/THEN in main spec -> warn user.
 This ensures the main specs always reflect what was actually built, not what was planned.
 <!-- /LoopForge: verify-gate-archive -->
@@ -619,7 +627,10 @@ __LOOPFORGE_TRIG__
 
   # ---------- 1. openspec/  (WHAT - shared truth) ----------
   echo "==> Creating openspec/ (WHAT)"
-  mkdir -p openspec/specs openspec/changes/_template/specs/capability openspec/archive
+  # changes/archive/ is the canonical archive location (OpenSpec 1.15+). Scaffold creates it
+  # even with --no-init (openspec init would otherwise own it), so O4 checks stay green.
+  mkdir -p openspec/specs openspec/changes/_template/specs/capability openspec/changes/archive
+  touch openspec/changes/archive/.gitkeep 2>/dev/null || true
 
   cat <<'EOF' | subst | write_if_absent openspec/README.md
 # OpenSpec - Shared Truth (WHAT)
@@ -628,11 +639,31 @@ __LOOPFORGE_TRIG__
 
 This directory is the **single source of truth** for WHAT to build.
 
+## Project Overview
+
+### System
+@@PROJECT_NAME@@ - [one-line business description]
+
+### Tech Stack
+| Layer | Tech |
+|:--|:--|
+| Backend | [e.g. Java 17 + Spring Boot 3 + MyBatis] |
+| Frontend | [e.g. Vue 3 + Vite + Element Plus] |
+| Database | [e.g. MySQL 8] |
+
+### Module Map
+[Directory tree of code modules]
+
+### Architecture
+[High-level architecture: layers, data flow, external integrations]
+
+> No coding conventions here - those live in per-stack `CLAUDE.md`/`AGENTS.md` and `.claude/rules/`.
+
 ## Structure
 - `specs/` - static contracts (`api/`, `data/`, `errors/`). Authoritative; all agents reference it.
 - `changes/` - dynamic delta proposals (active work). Start from `_template/`.
-- `archive/` - completed proposals (history).
-- `project.md` - tech stack, module map, architecture (no coding conventions).
+- `changes/archive/` - completed proposals (history; written by `/opsx:archive`).
+- `config.yaml` - OpenSpec-managed schema + project context. User-owned; LoopForge never writes it.
 
 ## Responsibility Separation
 | Layer | Location | Role |
@@ -644,29 +675,7 @@ This directory is the **single source of truth** for WHAT to build.
 ## Workflow
 1. `/opsx:propose <change>` - brainstorm + write proposal (auto-triggers Superpowers)
 2. `/opsx:apply` - implement per spec (TDD enforced)
-3. `/opsx:archive` - move completed proposal to `archive/`
-EOF
-
-  cat <<'EOF' | subst | write_if_absent openspec/project.md
-# Project Overview - @@PROJECT_NAME@@
-
-## System
-@@PROJECT_NAME@@ - [one-line business description]
-
-## Tech Stack
-| Layer | Tech |
-|:--|:--|
-| Backend | [e.g. Java 17 + Spring Boot 3 + MyBatis] |
-| Frontend | [e.g. Vue 3 + Vite + Element Plus] |
-| Database | [e.g. MySQL 8] |
-
-## Module Map
-[Directory tree of code modules]
-
-## Architecture
-[High-level architecture: layers, data flow, external integrations]
-
-> No coding conventions here - those live in `.claude/rules/` and per-stack `CLAUDE.md`.
+3. `/opsx:archive` - move completed proposal to `changes/archive/`
 EOF
 
   cat <<'EOF' | write_if_absent openspec/specs/README.md
@@ -812,9 +821,8 @@ Active work lives here. Each proposal is a directory containing:
 - `proposal.md` - Why / What / Scope / Success Criteria / Constraints / Risks
 - `specs/<capability>/spec.md` - delta spec (## ADDED/MODIFIED/REMOVED Requirements + ### Requirement: + #### Scenario:)
 
-Start from `_template/`. On completion, move the directory to `../archive/` via `/opsx:archive`.
+Start from `_template/`. On completion, archive via `/opsx:archive` (moves the directory into `changes/archive/`).
 EOF
-  touch openspec/archive/.gitkeep
 
   cat <<'EOF' | write_if_absent openspec/loop-state.yaml
 # openspec/loop-state.yaml - LoopForge workflow state machine.
@@ -1859,13 +1867,13 @@ EOF
   if has frontend;        then mkdir -p "$FRONTEND_DIR"; gen_agent frontend        "$FRONTEND_DIR" "$(label_for frontend)";       touch "$FRONTEND_DIR/.gitkeep"; fi
   if has frontend-mobile; then mkdir -p "$MOBILE_DIR";   gen_agent frontend-mobile "$MOBILE_DIR"   "$(label_for frontend-mobile)"; touch "$MOBILE_DIR/.gitkeep"; fi
 
-  # ---------- 3b. Multi-stack coordination layer (OpenSpec 1.6.0) ----------
-  # OpenSpec 1.6.0 removed workspace/context-store/initiative. Cross-stack coordination is now a
-  # LoopForge-managed convention built on 1.6.0 primitives (each stack is a subdir of one OpenSpec root):
+  # ---------- 3b. Multi-stack coordination layer ----------
+  # OpenSpec removed workspace/context-store/initiative. Cross-stack coordination is now a
+  # LoopForge-managed convention built on current OpenSpec primitives (each stack is a subdir of one OpenSpec root):
   #   - openspec/coordination/<feature>.md : shared "parent" (design/decisions + per-stack change registry)
   #   - openspec new change <name> --goal "<feature>" : per-stack change soft-tagged to the feature
-  #   - openspec workset : group all stack dirs to open them together (IDE; agent open is temporarily
-  #     disabled in 1.6.0 - launch codex/claude manually in the project root for a coordinator session)
+  #   - openspec workset : group all stack dirs to open them together (IDE; agent open is currently
+  #     unavailable - launch codex/claude manually in the project root for a coordinator session)
   # Without this, a cross-stack feature's "declared dependency" has no home and is lost.
   if [[ $RUN_INIT -eq 1 ]] && command -v openspec >/dev/null 2>&1; then
     _nstacks=$(awk -F, '{print NF}' <<<"$STACKS")
@@ -1875,9 +1883,9 @@ EOF
       # by openspec list/validate/context).
       mkdir -p openspec/coordination
       cat <<'__COORD_README__' | subst | write_if_absent openspec/coordination/README.md
-# Cross-Stack Coordination (LoopForge convention for OpenSpec 1.6.0)
+# Cross-Stack Coordination (LoopForge convention)
 
-> OpenSpec 1.6.0 removed `workspace`/`context-store`/`initiative`. This directory is the
+> OpenSpec removed `workspace`/`context-store`/`initiative`. This directory is the
 > LoopForge-managed replacement for the "parent" that tracks a cross-stack feature across
 > per-stack changes. It is plain documentation - the openspec CLI does not parse it.
 
@@ -1889,7 +1897,7 @@ EOF
 
 ## Open all stacks together
 ```bash
-openspec workset open @@WS_NAME@@ --tool code   # IDE (VS Code/Cursor). Agent open is temporarily disabled in 1.6.0.
+openspec workset open @@WS_NAME@@ --tool code   # IDE (VS Code/Cursor). Agent open is currently unavailable.
 ```
 For a coordinator agent session, launch `codex` / `claude` manually in the project root.
 
@@ -1921,7 +1929,7 @@ __COORD_README__
 ## Gate
 Feature done = ALL registered changes verify PASS -> archive each.
 __COORD_TPL__
-      # Workset grouping all stack code dirs (no --tool: agent open is disabled in 1.6.0; create saves cleanly).
+      # Workset grouping all stack code dirs (no --tool: agent open is unavailable; create saves cleanly).
       # OpenSpec requires kebab-case workset names; convert PROJECT_NAME accordingly.
       _ws_name=$(echo "$PROJECT_NAME" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | tr '_' '-')
       _members=""
@@ -1950,7 +1958,7 @@ __COORD_TPL__
     echo '```'
     echo "@@PROJECT_NAME@@/"
     echo "├── CLAUDE.md          ← nav hub (≤120 lines)"
-    echo "├── openspec/          ← WHAT: specs/, changes/, archive/"
+    echo "├── openspec/          ← WHAT: README, specs/, changes/"
     echo "├── .claude/           ← HOW: rules/, skills/, agents/, settings.json"
     if has backend;         then echo "├── @@BACKEND_DIR@@/      ← $(label_for backend)"; fi
     if has frontend;        then echo "├── @@FRONTEND_DIR@@/     ← $(label_for frontend)"; fi
@@ -1958,7 +1966,7 @@ __COORD_TPL__
     echo '```'
     echo ""
     echo "## Business Context"
-    echo "[1-3 sentences from openspec/project.md]"
+    echo "[1-3 sentences from openspec/README.md ## Project Overview]"
     echo ""
     echo "## Tech Stack"
     echo "| Layer | Tech |"
@@ -1986,7 +1994,7 @@ __COORD_TPL__
     if has backend && (has frontend || has frontend-mobile); then
       echo ""
       echo "### Cross-Stack Feature (>=2 stacks - one coordination doc tracks all per-stack changes)"
-      echo "A cross-stack \"declared dependency\" with no parent is lost. Stable pattern (OpenSpec 1.6.0):"
+      echo "A cross-stack \"declared dependency\" with no parent is lost. Stable pattern:"
       echo "1. Parent: create \`openspec/coordination/<feature>.md\` (shared design/decisions + change registry)"
       echo "2. Per stack (parallel): \`openspec new change <name> --goal \"<feature>\"\` (soft-tagged to the feature)"
       echo "3. Implement each in its own stack (cross-domain ban unchanged; frontend mocks first - web only; mini-program may connect to real test backend); coordinate via the coordination doc \`design\`/\`decisions\`"
@@ -2046,12 +2054,12 @@ EOF
 ## 去哪找什么
 | 你想找的 | 位置 | 语言 |
 |:--|:--|:--|
-| 项目业务/架构/模块图 | `openspec/project.md` | 英文 |
+| 项目业务/架构/模块图 | `openspec/README.md` 的 `## Project Overview` | 英文 |
 | API/数据/错误契约 | `openspec/specs/` | 英文 |
 | 各技术栈编码规范 | `<stack>/CLAUDE.md` | 英文 |
 | 命名等通用规则 | `.claude/rules/*.md` | 英文 |
 | 斜杠命令用法 | `.claude/commands/opsx/` | 英文 |
-| 验证 skill/命令 | Claude: `.claude/commands/opsx/verify.md`; Codex: `.codex/skills/openspec-verify/` | 英文 |
+| 验证 skill/命令 | Claude: `.claude/commands/opsx/verify.md`; Codex: `.agents/skills/openspec-verify/`（旧版 `.codex/skills/`） | 英文 |
 | 构建测试配置（验证用） | `openspec/verify.config.yaml` | 英文 |
 | 提案中文介绍 | `docs/proposals/<name>.zh.md` | 中文 |
 | 本人类导览 | `docs/GUIDE.zh.md`（本文件） | 中文 |
@@ -2063,12 +2071,12 @@ EOF
 4. 归档 → `/opsx:archive <名字>`，检查 `verify.md` 门禁后归档
 
 ## 跨栈功能协调（前后端联动）
-当一个功能跨多个栈（如前端+后端分属独立仓库），单栈 change 不够--前端 agent 按跨域禁令正确排除后端，但"声明的后端依赖"没有归属会被静默丢失（没人创建对应的兄弟 change）。OpenSpec 1.6.0 移除了原生 initiative/workspace，脚手架改用 LoopForge 约定，已为 ≥2 栈自动建好：
+当一个功能跨多个栈（如前端+后端分属独立仓库），单栈 change 不够--前端 agent 按跨域禁令正确排除后端，但"声明的后端依赖"没有归属会被静默丢失（没人创建对应的兄弟 change）。OpenSpec 已移除原生 initiative/workspace，脚手架改用 LoopForge 约定，已为 ≥2 栈自动建好：
 - **协调文档**（`openspec/coordination/`）已自动建立 -- 跨栈"父级"（共享设计/决策 + 各栈 change 登记表），CLI 不解析
 - **子级 change**：各栈 `openspec new change <名> --goal "<功能>"`，用 `--goal` 软标签关联到功能
 - **登记**：把各栈 change 填进 `openspec/coordination/<功能>.md` 的登记表
 - **完成门禁**：所有登记的 change 都 verify PASS -> 功能才算完 -> 各自归档
-- **协调会话**：`openspec workset open <项目> --tool code`（IDE 打开所有栈；1.6.0 暂时禁用 agent 直接打开，需手动在项目根启动 codex/claude）
+- **协调会话**：`openspec workset open <项目> --tool code`（IDE 打开所有栈；agent 直接打开暂不可用，需手动在项目根启动 codex/claude）
 
 ## 约定速记
 - 先 spec 后代码：没有 spec 不写代码
@@ -2093,9 +2101,10 @@ __GUIDE_ZH__
   if [[ $RUN_INIT -eq 0 ]]; then echo "  2. openspec init   (generate slash commands + base skills)"; fi
   echo "  3. Install on-demand Claude skills: Superpowers set (brainstorm / writing-plans / executing-plans / code-review / verification)"
   if has frontend || has frontend-mobile; then echo "     + frontend-design skill"; fi
-  echo "  4. Fill [BRACKETS] placeholders in openspec/project.md, openspec/specs/*, and per-stack CLAUDE.md/AGENTS.md"
+  echo "  4. Fill [BRACKETS] placeholders in openspec/README.md (## Project Overview), openspec/specs/*, and per-stack CLAUDE.md/AGENTS.md"
   echo "  5. Edit openspec/verify.config.yaml - set each stack build/test commands for /opsx:verify (L1 build / L3 test)"
   echo "  6. Run the loopforge audit (30 checks) to verify maturity"
+  echo "  7. After any 'openspec update', re-run scaffold.sh - it re-injects the LoopForge triggers wiped by the update (idempotent)"
 }
 
 # ---------------- subcommand: check (自检 + LoopForge audit) ----------------
@@ -2146,31 +2155,45 @@ cmd_check() {
   [[ -f openspec/specs/errors/spec.md ]] && specs=$((specs+1))
   case $specs in 3) report PASS "O1 specs api/data/errors";; 1|2) report PARTIAL "O1 specs ($specs/3: api/data/errors)";; *) report FAIL "O1 specs api/data/errors";; esac
  if [[ -f openspec/changes/_template/proposal.md && -f openspec/changes/_template/specs/capability/spec.md ]]; then report PASS "O3 changes/_template (proposal+spec)"; else report FAIL "O3 changes/_template"; fi
-  # O4 - canonical archive is openspec/archive/; archives misplaced in
-  # openspec/changes/archive/ is common drift - a dir-existence-only check hides it.
-  local _o4real=0 _o4mis=0 _o4e
-  if [[ -d openspec/archive ]]; then
-    for _o4e in openspec/archive/*; do
-      [[ -e "$_o4e" ]] || continue
-      case "$(basename "$_o4e")" in .gitkeep|README.md|.DS_Store) continue;; esac
-      _o4real=$((_o4real+1))
-    done
-  fi
+  # O4 - canonical archive is openspec/changes/archive/ (OpenSpec 1.15+).
+  # Top-level openspec/archive/ is the pre-1.15 layout: accepted as legacy
+  # with a migration hint (PASS, not FAIL) - real archives must not be lost.
+  local _o4cur=0 _o4old=0 _o4e
   if [[ -d openspec/changes/archive ]]; then
     for _o4e in openspec/changes/archive/*; do
       [[ -e "$_o4e" ]] || continue
       case "$(basename "$_o4e")" in .gitkeep|README.md|.DS_Store) continue;; esac
-      _o4mis=$((_o4mis+1))
+      _o4cur=$((_o4cur+1))
     done
   fi
-  if (( _o4mis > 0 )); then
-    report PARTIAL "O4 archive/ ($_o4mis misplaced in changes/archive/ - move to openspec/archive/)"
-  elif [[ -d openspec/archive ]]; then
-    report PASS "O4 archive/ ($_o4real archived)"
-  else
-    report FAIL "O4 archive/ (run: openspec init / scaffold.sh)"
+  if [[ -d openspec/archive ]]; then
+    for _o4e in openspec/archive/*; do
+      [[ -e "$_o4e" ]] || continue
+      case "$(basename "$_o4e")" in .gitkeep|README.md|.DS_Store) continue;; esac
+      _o4old=$((_o4old+1))
+    done
   fi
- [[ -f openspec/project.md ]] && report PASS "O5 openspec/project.md" || report FAIL "O5 openspec/project.md"
+  if [[ -d openspec/changes/archive ]]; then
+    if (( _o4old > 0 )); then
+      report PASS "O4 changes/archive/ ($_o4cur archived; legacy openspec/archive/ still holds $_o4old items - move them into changes/archive/)"
+    else
+      report PASS "O4 changes/archive/ ($_o4cur archived)"
+    fi
+  elif [[ -d openspec/archive ]]; then
+    report PASS "O4 archive/ (legacy openspec/archive/, $_o4old items - OpenSpec 1.15 archives to changes/archive/; migrate when convenient)"
+  else
+    report FAIL "O4 changes/archive/ (run: openspec init / scaffold.sh)"
+  fi
+  # O5 - project overview. Canonical: '## Project Overview' section inside
+  # openspec/README.md (merged from the former openspec/project.md). Legacy
+  # projects keeping project.md still PASS, with a migration hint.
+  if grep -q '^## Project Overview' openspec/README.md 2>/dev/null; then
+    report PASS "O5 project overview (openspec/README.md ## Project Overview)"
+  elif [[ -f openspec/project.md ]]; then
+    report PASS "O5 project overview (legacy openspec/project.md - migrate: merge its content into openspec/README.md '## Project Overview', then delete project.md)"
+  else
+    report FAIL "O5 project overview (add a '## Project Overview' section to openspec/README.md: system / tech stack / module map / architecture)"
+  fi
   [[ -f openspec/README.md ]] && report PASS "O6 openspec/README.md" || report FAIL "O6 openspec/README.md"
 
   # O8 WHEN/THEN
@@ -2212,16 +2235,21 @@ PY
   # E3 / S6 / S4 / S8 / S5
   if [[ -d .claude/commands/opsx ]]; then
     report PASS "E3 .claude/commands/opsx/ (Claude slash commands)"
+  elif [[ -d .agents/skills/openspec-propose ]]; then
+    report PASS "E3 .agents/skills/openspec-*/ (Codex skills)"
   elif [[ -d .codex/skills/openspec-propose ]]; then
-    report PASS "E3 .codex/skills/openspec-*/ (Codex skills)"
+    report PASS "E3 .codex/skills/openspec-*/ (Codex skills - legacy layout; re-run openspec init to migrate to .agents/skills/)"
   else
     report FAIL "E3 no opsx commands/skills found (run: openspec init)"
   fi
-  # E3+ - verify skill/command (loopforge enhancement: openspec init ships none)
+  # E3+ - verify skill/command (loopforge enhancement: openspec init ships none).
+  # OpenSpec 1.15 installs codex skills under .agents/skills/; .codex/skills/ is legacy.
   if [[ -f .claude/commands/opsx/verify.md ]]; then
     report PASS "E3+ verify command (.claude/commands/opsx/verify.md)"
+  elif [[ -f .agents/skills/openspec-verify/SKILL.md ]]; then
+    report PASS "E3+ verify skill (.agents/skills/openspec-verify/)"
   elif [[ -f .codex/skills/openspec-verify/SKILL.md ]]; then
-    report PASS "E3+ verify skill (.codex/skills/openspec-verify/)"
+    report PASS "E3+ verify skill (.codex/skills/openspec-verify/ - legacy layout; re-run openspec init to migrate to .agents/skills/)"
   else
     report PARTIAL "E3+ verify skill missing (re-run scaffold.sh to create)"
   fi
@@ -2621,7 +2649,7 @@ cmd_restructure() {
     # Classify: check header text first (more reliable), then content keywords
     target=""
     if echo "$header" | grep -qiE 'business|context|project|overview|项目|业务'; then
-      target="root (nav hub) + project.md"
+      target="root (nav hub) + openspec/README.md ## Project Overview"
     elif echo "$header" | grep -qiE 'api|endpoint|route|接口'; then
       target="specs/api/spec.md"
     elif echo "$header" | grep -qiE 'error|错误|code'; then
