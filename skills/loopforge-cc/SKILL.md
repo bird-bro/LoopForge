@@ -86,7 +86,7 @@ Generate a complete Loop Engineering framework from scratch.
 2. Install on-demand components (referenced by audit but NOT generated - they are separate skills/agents):
    - Superpowers skills: brainstorm, writing-plans, executing-plans, code-review, verification-before-completion
    - `frontend-design` skill (frontend projects only)
-3. Fill `[BRACKETS]` placeholders in `openspec/project.md`, `openspec/specs/*`, and per-stack `CLAUDE.md`.
+3. Fill `[BRACKETS]` placeholders in `openspec/README.md` (`## Project Overview`), `openspec/specs/*`, and per-stack `CLAUDE.md`.
 4. Run **Mode: Audit** to verify maturity.
 
 > All file templates live in `scaffold.sh` (single source of truth). Do not duplicate them here.
@@ -100,8 +100,8 @@ Generate a complete Loop Engineering framework from scratch.
 | # | Check | Criteria | Fix |
 |:--|:--|:--|:--|
 | E1 | OpenSpec CLI installed | `openspec --version` returns valid version | `npm i -g @fission-ai/openspec@latest` |
-| E2 | Project initialized | `openspec/` exists with `specs/`, `changes/`, `archive/` | `openspec init` |
-| E3 | Slash commands generated | `.claude/commands/opsx:propose`, `opsx:apply`, `opsx:archive`, `opsx:verify` (loopforge) exist | `openspec init` + scaffold |
+| E2 | Project initialized | `openspec/` exists with `specs/`, `changes/`, `changes/archive/` | `openspec init` |
+| E3 | Slash commands generated | `.claude/commands/opsx/` contains `propose`, `apply`, `archive` (+ `explore`, `sync`); `verify.md` is loopforge-added | `openspec init` + scaffold |
 | E4 | frontend-design skill available | `.claude/skills/frontend-design/SKILL.md` exists (frontend only) | Install `frontend-design` skill |
 
 Environment score = E_yes / 4. 0/4 → STOP; 1-3/4 → WARNING; 4/4 → PASS.
@@ -115,8 +115,8 @@ Environment score = E_yes / 4. 0/4 → STOP; 1-3/4 → WARNING; 4/4 → PASS.
 | O1 | Shared spec docs | `openspec/specs/` has `api/spec.md` + `data/spec.md` + `errors/spec.md` |
 | O2 | API contract authoritative | All agents reference it; frontend mocks from it; backend implements to it |
 | O3 | Delta proposal templates | `openspec/changes/_template/` with `proposal.md` + `specs/<capability>/spec.md` (## ADDED Requirements) |
-| O4 | Change archive | `openspec/archive/` for completed proposals |
-| O5 | Project overview | `openspec/project.md`: tech stack, module map, architecture - no coding conventions |
+| O4 | Change archive | `openspec/changes/archive/` for completed proposals (pre-1.15 top-level `openspec/archive/` accepted as legacy) |
+| O5 | Project overview | `openspec/README.md` `## Project Overview`: system, tech stack, module map, architecture (legacy `openspec/project.md` accepted with migration hint) |
 | O6 | Boundary clear | `openspec/README.md` explains structure: `specs/` inside `openspec/`, unified entry |
 | O7 | Language efficient | Auto-loaded files (root + per-stack `CLAUDE.md`/`AGENTS.md`, `.claude/rules/*.md`) in English. Auto-measured by `check` (CJK char ratio; `CJK_THRESHOLD` env, default 10%). `specs/`/`openspec/` assessed in full audit mode |
 | O8 | WHEN/THEN scenarios | Every spec in `openspec/changes/` contains WHEN/THEN verification scenarios |
@@ -179,7 +179,7 @@ Read the root CLAUDE.md completely and classify every section per stack:
 
 | Content type | Belongs in |
 |:--|:--|
-| Business context | Root CLAUDE.md (nav) + `openspec/project.md` |
+| Business context | Root CLAUDE.md (nav) + `openspec/README.md` `## Project Overview` |
 | Build commands (mvn/gradle) | Backend Agent CLAUDE.md |
 | Build commands (pnpm/npm/yarn) | Frontend Agent CLAUDE.md |
 | Backend patterns (Java/Spring/MyBatis) | Backend Agent CLAUDE.md |
@@ -205,7 +205,7 @@ Each agent file must contain: Role, Project Overview, Before You Code, Module St
 **Edge cases:** single stack → don't split, just add Role + NEVER + Superpowers + TDD. Already split → verify all sections present, add missing ones. Mobile + desktop frontends → separate files (different UI paradigms).
 
 ### Phase 3: Rewrite Root CLAUDE.md (nav hub, ≤120 lines)
-Project map + business context (1-3 sentences) + tech-stack table + development workflow + AI coding rules + session commands + minimal build & test. If it exceeds 120 lines, move content to `openspec/project.md` or agent files.
+Project map + business context (1-3 sentences) + tech-stack table + development workflow + AI coding rules + session commands + minimal build & test. If it exceeds 120 lines, move content to `openspec/README.md` (`## Project Overview`) or agent files.
 
 ### Phase 4: Verify
 1. No content lost - every example/convention/command is in exactly one file.
@@ -329,10 +329,10 @@ Project map + business context (1-3 sentences) + tech-stack table + development 
 
 ## Multi-Stack Coordination (Cross-Stack Features)
 
-When a feature spans >=2 stacks (e.g. frontend + backend in separate repos), a single-stack `spec-driven` change is insufficient: the agent correctly excludes the other stack via the cross-domain ban, but the "declared dependency" then has no home and is silently lost (nobody creates the sibling change). OpenSpec 1.6.0 removed the native `workspace`/`context-store`/`initiative` layer, so LoopForge replaces it with a managed convention that scaffold.sh auto-sets up for >=2 stacks:
+When a feature spans >=2 stacks (e.g. frontend + backend in separate repos), a single-stack `spec-driven` change is insufficient: the agent correctly excludes the other stack via the cross-domain ban, but the "declared dependency" then has no home and is silently lost (nobody creates the sibling change). OpenSpec removed the native `workspace`/`context-store`/`initiative` layer, so LoopForge replaces it with a managed convention that scaffold.sh auto-sets up for >=2 stacks:
 
 - **`openspec/coordination/<feature>.md`** - the **parent**: a shared doc (design / decisions / tasks + a per-stack change registry) tracking the whole cross-stack feature. CLI-safe: `openspec list`/`validate`/`context` do not parse it.
-- **`openspec new change <name> --goal "<feature>"`** - each stack's **child** change, soft-tagged to the feature via the `--goal` metadata (1.6.0 has no native parent/child link; track linkage in the coordination doc's registry).
+- **`openspec new change <name> --goal "<feature>"`** - each stack's **child** change, soft-tagged to the feature via the `--goal` metadata (OpenSpec has no native parent/child link; track linkage in the coordination doc's registry).
 - **`openspec workset`** - groups all stack dirs so you can open them together.
 
 Stable pattern (CLI-driven; works in Codex and Claude Code):
@@ -344,7 +344,7 @@ Stable pattern (CLI-driven; works in Codex and Claude Code):
 4. Implement each in its own stack (cross-domain ban unchanged; frontend mocks first (web frontends; mini-program may connect to real test backend per H3 notes)).
    Cross-stack handoffs/sequencing live in openspec/coordination/<feature>.md (design/decisions).
 5. Gate: feature done = ALL registered changes verify PASS (openspec/verify.config.yaml) -> archive each.
-   Open all stacks: openspec workset open <project> --tool code  (IDE; 1.6.0 temporarily disables agent open -
+   Open all stacks: openspec workset open <project> --tool code  (IDE; agent open is currently unavailable -
    for a coordinator agent session, launch codex/claude manually in the project root).
 ```
 
@@ -412,7 +412,7 @@ coordination layer:
 
 ```
 /opsx:propose add-feature
-  → Harness reads .claude/commands/opsx:propose
+  → Harness reads .claude/commands/opsx/propose.md
   → command file says "activate Superpowers brainstorming"
   → Superpowers brainstorm skill auto-triggers
   → AI asks clarifying questions (TDD flow begins)
@@ -421,3 +421,5 @@ coordination layer:
 For UI/page work on new pages, insert a `design` step before `/opsx:apply`: build an HTML prototype first (existing-page edits skip). Two paths - ① code-first: write HTML/CSS (or React+Tailwind/shadcn) directly → render in `browser` → `screenshot` self-check (fastest for simple pages/prototypes); ② `frontend-app-builder` skill: Claude as senior frontend designer → Image Gen visual concept → user confirms → faithful code impl → `browser` + `view_image` compare to 10/10 (no Figma). Main stack: `build-web-apps` (`frontend-app-builder` + `shadcn-best-practices`) + `browser` + `screenshot`; default HTML/CSS for static/single-file, React+Vite only for complex apps.
 
 This is the integration protocol between OpenSpec and Superpowers - the "loop" in Loop Engineering: propose → plan → design(UI) → execute → review → verify → archive.
+
+> **After `openspec update`:** OpenSpec rewrites its generated command/skill files, wiping the LoopForge trigger injections. Re-run `scaffold.sh` in the project - it re-injects idempotently (existing files are skipped, markers are deduped).

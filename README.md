@@ -12,7 +12,7 @@ LoopForge starts from a simple question: how do you keep moving when you're a so
 
 Excellent frameworks spec-superflow assume a greenfield or test-backed baseline; on untested legacy code they would correctly block every change. LoopForge learned from them and took a different path: a lightweight generator approach (shell + Python) that audits what's missing first, restructures without disrupting existing code, and safely degrades TDD with characterization tests and debt logging where strict rules would otherwise stall.
 
-Built around the industrial-grade three-layer paradigm (**OpenSpec + Superpowers + Harness**, a.k.a. OSH / Loop Engineering), LoopForge ships as an AI-collaboration optimization skill in two parallel editions — each with its own `scaffold.sh` (CC edition creates `.claude/`, Codex edition creates `.codex/`):
+Built around the industrial-grade three-layer paradigm (**OpenSpec + Superpowers + Harness**, a.k.a. OSH / Loop Engineering), LoopForge ships as an AI-collaboration optimization skill in two parallel editions — each with its own `scaffold.sh` (CC edition creates `.claude/`, Codex edition creates `.agents/`):
 
 | Edition | Skill | AI tool | Live entry file | Discipline (HOW) | Loop driver |
 |:--|:--|:--|:--|:--|:--|
@@ -83,19 +83,19 @@ Install globally into Codex's skills directory, then restart Codex:
 cp -R skills/loopforge-codex ~/.codex/skills/loopforge-codex
 ```
 
-`scaffold.sh` ships as a real file inside the skill directory, so a plain copy is enough. After restart, the skill auto-triggers from its `description` or can be invoked explicitly via `$loopforge-codex`; `openspec init --tools codex` additionally generates Codex `/opsx:` slash commands (`/opsx:propose`, `/opsx:apply`, `/opsx:archive`, `/opsx:explore`, `/opsx:sync`).
+`scaffold.sh` ships as a real file inside the skill directory, so a plain copy is enough. After restart, the skill auto-triggers from its `description` or can be invoked explicitly via `$loopforge-codex`; `openspec init --tools codex` additionally generates the OpenSpec workflow skills (`.agents/skills/openspec-*` in OpenSpec 1.15+). The `/opsx:verify` three-layer check is LoopForge-added, not part of OpenSpec.
 
 > If you previously copied the old version into `~/.codex/skills/loop-eng`, remove it first to avoid both skills triggering on the same intent: `rm -rf ~/.codex/skills/loop-eng`.
 
 ## Scaffold a new project
 
-Each edition has its own `scaffold.sh`. CC creates `.claude/`; Codex creates `.codex/`. Both generate `CLAUDE.md` + `AGENTS.md` mirrors:
+Each edition has its own `scaffold.sh`. CC creates `.claude/`; Codex creates `.agents/`. Both generate `CLAUDE.md` + `AGENTS.md` mirrors:
 
 ```bash
 # Claude Code (creates .claude/)
 ./skills/loopforge-cc/scaffold.sh myapp
 
-# Codex (creates .codex/)
+# Codex (creates .agents/)
 ./skills/loopforge-codex/scaffold.sh myapp --tools codex
 
 # three stacks (web + mobile)
@@ -131,7 +131,7 @@ Beyond the default scaffold, `scaffold.sh` ships nine more subcommands (run dire
 myapp/
 ├── CLAUDE.md                 ← nav hub (≤120 lines) - Claude Code entry
 ├── AGENTS.md                 ← nav hub for Codex (mirrors CLAUDE.md)
-├── openspec/                 ← WHAT: README, project.md, specs/{api,data,errors}, changes/_template, archive
+├── openspec/                 ← WHAT: README (incl. Project Overview), specs/{api,data,errors}, changes/_template, changes/archive
 │   ├── sdd/                  ← SDD: implementer-prompt.md, reviewer-prompt.md, progress.md
 │   ├── guard.sh              ← Phase gate: proposing→applying→verifying→archived
 │   ├── ensure-branch.sh      ← Worktree isolation (legacy-aware git resilience)
@@ -139,12 +139,12 @@ myapp/
 │   ├── loop-state.yaml       ← Phase state machine (phase/change/retry_count/execution_mode)
 │   └── verify.config.yaml    ← Per-stack build/test commands (local /opsx:verify L1/L3)
 ├── .claude/  (CC edition)    ← HOW: settings.json (perms+hooks), rules/, agents/{reviewer,coordinator,implementer}
-├── .codex/   (Codex edition) ← HOW: skills/openspec-* (propose/apply/verify/archive + triggers)
+├── .agents/  (Codex edition) ← HOW: skills/openspec-* (propose/apply/verify/archive + triggers; legacy: .codex/)
 ├── backend/{CLAUDE,AGENTS}.md   ← Backend Agent (Claude Code / Codex)
 └── frontend-web/{CLAUDE,AGENTS}.md ← Frontend Agent (Claude Code / Codex)
 ```
 
-`CLAUDE.md` and `AGENTS.md` are always generated together (mirrored), so the same project works in either tool. The CC edition creates `.claude/`; the Codex edition creates `.codex/` - each only creates its own tool directory. Non-destructive: existing files are skipped, safe to re-run.
+`CLAUDE.md` and `AGENTS.md` are always generated together (mirrored), so the same project works in either tool. The CC edition creates `.claude/`; the Codex edition creates `.agents/` - each only creates its own tool directory. Non-destructive: existing files are skipped, safe to re-run.
 
 ### What you must install separately (per edition)
 
@@ -154,7 +154,7 @@ myapp/
 
 **Codex:** nothing extra - the Superpowers 5-step discipline is already encoded as instructions in each generated `AGENTS.md`, and the loop is driven by the `openspec` CLI.
 
-Then fill `[BRACKETS]` placeholders in `openspec/project.md`, `openspec/specs/*`, and per-stack `CLAUDE.md` / `AGENTS.md`.
+Then fill `[BRACKETS]` placeholders in `openspec/README.md` (`## Project Overview`), `openspec/specs/*`, and per-stack `CLAUDE.md` / `AGENTS.md`.
 
 ## Audit an existing project
 

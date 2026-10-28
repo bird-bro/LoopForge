@@ -7,7 +7,7 @@ description: Loop工程框架（LoopForge Codex版）- 为已有代码项目接�
 
 **OpenSpec defines direction (WHAT), Superpowers enforces discipline (HOW), Harness orchestrates collaboration (WHO).**
 
-> **Codex edition.** `openspec init --tools codex` generates project-local `.codex/skills/openspec-*` skills - `openspec-propose`, `openspec-apply-change`, `openspec-archive-change`, `openspec-explore`, `openspec-sync-specs` - invoked via `$skill-name`. LoopForge adds `openspec-verify` (three-layer verification: L1 build / L2 spec alignment / L3 tests) + injects verify triggers/gates into the apply/archive skills. Codex drives the propose → verify → archive loop via `$` skills + the `openspec` CLI + natural language. Skills also auto-trigger by their `description`. The Superpowers 5-step discipline is encoded as instructions inside `AGENTS.md`. `AGENTS.md` is Codex's live entry file; `CLAUDE.md` is the Claude Code mirror (also generated, but Codex does not read it).
+> **Codex edition.** `openspec init --tools codex` generates the OpenSpec workflow skills (`.agents/skills/openspec-*` in OpenSpec 1.15+; pre-1.15 projects keep `.codex/skills/`) - `openspec-propose`, `openspec-apply-change`, `openspec-archive-change`, `openspec-explore`, `openspec-sync-specs` - invoked via `$skill-name`. LoopForge adds `openspec-verify` (three-layer verification: L1 build / L2 spec alignment / L3 tests) + injects verify triggers/gates into the apply/archive skills. Codex drives the propose → verify → archive loop via `$` skills + the `openspec` CLI + natural language. Skills also auto-trigger by their `description`. The Superpowers 5-step discipline is encoded as instructions inside `AGENTS.md`. `AGENTS.md` is Codex's live entry file; `CLAUDE.md` is the Claude Code mirror (also generated, but Codex does not read it).
 
 ## Core Paradigm
 
@@ -88,7 +88,7 @@ Generate a complete Loop Engineering framework from scratch.
    ```
    `--tools codex` is passed to `openspec init` so OpenSpec generates Codex-flavored instruction files. Use `--tools codex,claude` if you also use Claude Code on the same project. `scaffold.sh` calls `openspec init` automatically (use `--no-init` to skip), then layers LoopForge templates on top. It is **non-destructive**: existing files are skipped.
 2. On-demand components - **Codex adaptation**: the Superpowers 5-step discipline (brainstorm → writing-plans → executing-plans → code-review → verification-before-completion) is **already encoded as instructions in each generated `AGENTS.md`** - no separate skill install needed. For frontend projects, fold frontend-design guidance into the frontend `AGENTS.md` (there is no `.claude/skills/frontend-design` in Codex).
-3. Fill `[BRACKETS]` placeholders in `openspec/project.md`, `openspec/specs/*`, and per-stack `AGENTS.md`.
+3. Fill `[BRACKETS]` placeholders in `openspec/README.md` (`## Project Overview`), `openspec/specs/*`, and per-stack `AGENTS.md`.
 4. Run **Mode: Audit** to verify maturity.
 
 > All file templates live in `scaffold.sh` (single source of truth). Do not duplicate them here.
@@ -102,13 +102,13 @@ Generate a complete Loop Engineering framework from scratch.
 | # | Check | Criteria (Codex) | Fix |
 |:--|:--|:--|:--|
 | E1 | OpenSpec CLI installed | `openspec --version` returns valid version | `npm i -g @fission-ai/openspec@latest` |
-| E2 | Project initialized | `openspec/` exists with `specs/`, `changes/`, `archive/` | `openspec init --tools codex` |
+| E2 | Project initialized | `openspec/` exists with `specs/`, `changes/`, `changes/archive/` | `openspec init --tools codex` |
 | E3 | Codex harness entry present | Root `AGENTS.md` exists (Codex's live entry) | scaffold.sh / create `AGENTS.md` nav hub |
 | E4 | Frontend design guidance | Frontend `AGENTS.md` carries design-system/UI guidance (frontend only) | Add a "Design Standards" section to frontend `AGENTS.md` |
 
 Environment score = E_yes / 4. 0/4 → STOP; 1-3/4 → WARNING; 4/4 → PASS.
 
-> Note: `scaffold.sh check` is Codex-aware - E3 probes root `AGENTS.md` and E4 probes the frontend `AGENTS.md` design guidance (Claude constructs are only checked when `--tools codex,claude`). E3+ checks for the verify skill (`.codex/skills/openspec-verify/` or `.claude/commands/opsx/verify.md`) - created by loopforge, not `openspec init`. Use the criteria above for the full semantic audit.
+> Note: `scaffold.sh check` is Codex-aware - E3 probes root `AGENTS.md` and E4 probes the frontend `AGENTS.md` design guidance (Claude constructs are only checked when `--tools codex,claude`). E3+ checks for the verify skill (`.agents/skills/openspec-verify/`, legacy `.codex/skills/`, or `.claude/commands/opsx/verify.md`) - created by loopforge, not `openspec init`. Use the criteria above for the full semantic audit.
 
 ### Phase 1: 30 Checks
 
@@ -119,8 +119,8 @@ Environment score = E_yes / 4. 0/4 → STOP; 1-3/4 → WARNING; 4/4 → PASS.
 | O1 | Shared spec docs | `openspec/specs/` has `api/spec.md` + `data/spec.md` + `errors/spec.md` |
 | O2 | API contract authoritative | All agents reference it; frontend mocks from it; backend implements to it |
 | O3 | Delta proposal templates | `openspec/changes/_template/` with `proposal.md` + `specs/<capability>/spec.md` (## ADDED Requirements) |
-| O4 | Change archive | `openspec/archive/` for completed proposals |
-| O5 | Project overview | `openspec/project.md`: tech stack, module map, architecture - no coding conventions |
+| O4 | Change archive | `openspec/changes/archive/` for completed proposals (pre-1.15 top-level `openspec/archive/` accepted as legacy) |
+| O5 | Project overview | `openspec/README.md` `## Project Overview`: system, tech stack, module map, architecture (legacy `openspec/project.md` accepted with migration hint) |
 | O6 | Boundary clear | `openspec/README.md` explains structure: `specs/` inside `openspec/`, unified entry |
 | O7 | Language efficient | Auto-loaded files (root + per-stack `AGENTS.md`) in English. Auto-measured by `check` (CJK char ratio; `CJK_THRESHOLD` env, default 10%). `specs/`/`openspec/` assessed in full audit mode |
 | O8 | WHEN/THEN scenarios | Every spec in `openspec/changes/` contains WHEN/THEN verification scenarios |
@@ -183,7 +183,7 @@ Read the root `AGENTS.md` completely and classify every section per stack:
 
 | Content type | Belongs in |
 |:--|:--|
-| Business context | Root `AGENTS.md` (nav) + `openspec/project.md` |
+| Business context | Root `AGENTS.md` (nav) + `openspec/README.md` `## Project Overview` |
 | Build commands (mvn/gradle) | Backend Agent `AGENTS.md` |
 | Build commands (pnpm/npm/yarn) | Frontend Agent `AGENTS.md` |
 | Backend patterns (Java/Spring/MyBatis) | Backend Agent `AGENTS.md` |
@@ -209,7 +209,7 @@ Each agent file must contain: Role, Project Overview, Before You Code, Module St
 **Edge cases:** single stack → don't split, just add Role + NEVER + Superpowers + TDD. Already split → verify all sections present, add missing ones. Mobile + desktop frontends → separate files (different UI paradigms).
 
 ### Phase 3: Rewrite Root `AGENTS.md` (nav hub, ≤120 lines)
-Project map + business context (1-3 sentences) + tech-stack table + development workflow + AI coding rules + session workflow + minimal build & test. If it exceeds 120 lines, move content to `openspec/project.md` or agent files.
+Project map + business context (1-3 sentences) + tech-stack table + development workflow + AI coding rules + session workflow + minimal build & test. If it exceeds 120 lines, move content to `openspec/README.md` (`## Project Overview`) or agent files.
 
 ### Phase 4: Verify
 1. No content lost - every example/convention/command is in exactly one file.
@@ -332,10 +332,10 @@ Project map + business context (1-3 sentences) + tech-stack table + development 
 
 ## Multi-Stack Coordination (Cross-Stack Features)
 
-When a feature spans >=2 stacks (e.g. frontend + backend in separate repos), a single-stack `spec-driven` change is insufficient: the agent correctly excludes the other stack via the cross-domain ban, but the "declared dependency" then has no home and is silently lost (nobody creates the sibling change). OpenSpec 1.6.0 removed the native `workspace`/`context-store`/`initiative` layer, so LoopForge replaces it with a managed convention that scaffold.sh auto-sets up for >=2 stacks:
+When a feature spans >=2 stacks (e.g. frontend + backend in separate repos), a single-stack `spec-driven` change is insufficient: the agent correctly excludes the other stack via the cross-domain ban, but the "declared dependency" then has no home and is silently lost (nobody creates the sibling change). OpenSpec removed the native `workspace`/`context-store`/`initiative` layer, so LoopForge replaces it with a managed convention that scaffold.sh auto-sets up for >=2 stacks:
 
 - **`openspec/coordination/<feature>.md`** - the **parent**: a shared doc (design / decisions / tasks + a per-stack change registry) tracking the whole cross-stack feature. CLI-safe: `openspec list`/`validate`/`context` do not parse it.
-- **`openspec new change <name> --goal "<feature>"`** - each stack's **child** change, soft-tagged to the feature via the `--goal` metadata (1.6.0 has no native parent/child link; track linkage in the coordination doc's registry).
+- **`openspec new change <name> --goal "<feature>"`** - each stack's **child** change, soft-tagged to the feature via the `--goal` metadata (OpenSpec has no native parent/child link; track linkage in the coordination doc's registry).
 - **`openspec workset`** - groups all stack dirs so you can open them together.
 
 Stable pattern (CLI-driven; works in Codex and Claude Code):
@@ -347,7 +347,7 @@ Stable pattern (CLI-driven; works in Codex and Claude Code):
 4. Implement each in its own stack (cross-domain ban unchanged; frontend mocks first (web frontends; mini-program may connect to real test backend per H3 notes)).
    Cross-stack handoffs/sequencing live in openspec/coordination/<feature>.md (design/decisions).
 5. Gate: feature done = ALL registered changes verify PASS (openspec/verify.config.yaml) -> archive each.
-   Open all stacks: openspec workset open <project> --tool code  (IDE; 1.6.0 temporarily disables agent open -
+   Open all stacks: openspec workset open <project> --tool code  (IDE; agent open is currently unavailable -
    for a coordinator agent session, launch codex/claude manually in the project root).
 ```
 
@@ -411,7 +411,7 @@ coordination layer:
 
 ## OpenSpec ⇄ Discipline Loop (Codex)
 
-OpenSpec ships Codex-native drivers: `.codex/skills/openspec-*` skills (invoked via `$`) and the `openspec` CLI. Drive the loop with `$openspec-propose` / `$openspec-apply-change` / `$openspec-verify` / `$openspec-archive-change` or the CLI, plus `AGENTS.md` discipline:
+OpenSpec ships Codex-native drivers: `openspec-*` skills (`.agents/skills/` in 1.15+, legacy `.codex/skills/`; invoked via `$`) and the `openspec` CLI. Drive the loop with `$openspec-propose` / `$openspec-apply-change` / `$openspec-verify` / `$openspec-archive-change` or the CLI, plus `AGENTS.md` discipline:
 
 ```
 propose:  openspec new change <name>  →  fill proposal.md + specs/<capability>/spec.md (## ADDED Requirements)
@@ -422,7 +422,9 @@ design:   (UI/page work, new pages only - before apply; existing-page edits skip
           Main stack: `build-web-apps` (`frontend-app-builder` + `shadcn-best-practices`) + `browser` + `screenshot`; default HTML/CSS for static/single-file, React+Vite only for complex apps
 apply:    implement tasks.md via TDD (red→green→refactor); per-task build check
 verify:   L1 build + L2 `openspec validate <name>` + L3 tests  →  write verify.md
-archive:  check verify.md (overall: PASS)  →  `openspec archive <name>`
+archive:  check verify.md (overall: PASS)  →  `openspec archive <name>` (moves into `changes/archive/`)
 ```
+
+> **After `openspec update`:** OpenSpec rewrites its generated skill files, wiping the LoopForge trigger injections. Re-run `scaffold.sh` in the project - it re-injects idempotently (existing files are skipped, markers are deduped).
 
 This is the "loop" in Loop Engineering: propose → plan → design(UI) → execute → review → verify → archive. The Superpowers discipline is not a separate installable skill here - it is the workflow encoded in `AGENTS.md` that the AI follows each cycle.

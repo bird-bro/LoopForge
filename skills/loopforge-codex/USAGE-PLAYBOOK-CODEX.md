@@ -2,7 +2,7 @@
 
 > 本手册以「**用户说 → AI 做**」的对话形式,说明在 Codex 中如何用 `loopforge-codex` skill 接入 Loop 工程（首次接入 / 老项目重构）(OpenSpec + Superpowers + Harness)。
 >
-> 它是 [USAGE-PLAYBOOK.md](../loopforge-cc/USAGE-PLAYBOOK.md)(Claude Code 版)的 Codex 对应版。两者骨架一致,差异在于入口文件与命令形态:`openspec init --tools codex` 为 Codex 生成项目内 `.codex/skills/openspec-*` 技能,用 `$skill-name` 调用(如 `$openspec-propose` / `$openspec-apply-change` / `$openspec-archive-change`)+ `openspec` CLI + 自然语言;Superpowers 纪律则写进 `AGENTS.md` 作为指令。
+> 它是 [USAGE-PLAYBOOK.md](../loopforge-cc/USAGE-PLAYBOOK.md)(Claude Code 版)的 Codex 对应版。两者骨架一致,差异在于入口文件与命令形态:`openspec init --tools codex` 为 Codex 生成工作流技能(OpenSpec 1.15+ 装到 `.agents/skills/openspec-*`;1.15 前的项目留在 `.codex/skills/`),用 `$skill-name` 调用(如 `$openspec-propose` / `$openspec-apply-change` / `$openspec-archive-change`)+ `openspec` CLI + 自然语言;Superpowers 纪律则写进 `AGENTS.md` 作为指令。
 >
 > 关键心法不变:**OpenSpec 定方向(WHAT)、Superpowers 强纪律(HOW)、Harness 编协作(WHO)**;每个功能走闭环 `propose → apply → verify → archive`(页面/UI 开发时,apply 前先 `design` HTML 原型),这就是 "Loop"。
 >
@@ -79,7 +79,7 @@ cd ./myproject
 ```
 - `--dir .`：在当前目录原地生成，不创建嵌套子目录
 - `--stacks` 和 `--*-dir`：**根据项目实际栈数量决定**。只有后端就只传 `--backend-dir`；有移动端才加 `--mobile-dir`
-- 自动跑 `openspec init --tools codex`，生成 `openspec/`、`.codex/skills/`、根 `AGENTS.md`（含 `[fill]` 占位符）、各栈 `AGENTS.md` + `CLAUDE.md`
+- 自动跑 `openspec init --tools codex`，生成 `openspec/`、`.agents/skills/`、根 `AGENTS.md`（含 `[fill]` 占位符）、各栈 `AGENTS.md` + `CLAUDE.md`
 
 4. **创建 workset**（多栈项目）：`openspec workset create <kebab-case-name> --member backend=./ops_sev --member frontend=./ops_web --member frontend-mobile=./ops_wechat`（项目名自动转 kebab-case）。
 5. **自动安装 Superpowers 技能**：从用户级插件缓存（`~/.claude/plugins/cache/.../superpowers/`）复制 brainstorming / writing-plans / executing-plans / requesting-code-review / verification-before-completion / test-driven-development / systematic-debugging 到 `.claude/skills/`。若插件未安装则提示用户安装。
@@ -110,7 +110,7 @@ cd ./myproject
 
 **AI**:
 1. **读取真实技术栈**：从 `pom.xml`（Java 版本、Spring Boot 版本、模块列表、数据库驱动）、`package.json`（框架、UI 库、构建/测试命令）提取信息。
-2. **批量填充占位符**：用脚本替换 `openspec/project.md`、各栈 `AGENTS.md` + `CLAUDE.md`（两者须镜像一致）、根 `AGENTS.md` 中的 `[fill]`、`[e.g. ...]`、`[one-line business description]` 等占位符。
+2. **批量填充占位符**：用脚本替换 `openspec/README.md`（`## Project Overview`）、各栈 `AGENTS.md` + `CLAUDE.md`（两者须镜像一致）、根 `AGENTS.md` 中的 `[fill]`、`[e.g. ...]`、`[one-line business description]` 等占位符。
 3. **修正 verify.config.yaml**：根据实际技术栈调整 build/test 命令。例如：
    - ops_wechat 有 vitest -> `test: pnpm test:run`（非 `null`）
    - ops_wechat 构建目标是微信小程序 -> `build: pnpm build:mp`（非 `pnpm build`）
@@ -237,7 +237,7 @@ rm -rf backend frontend-web
 
 #### Q4: `warn: context-store setup failed` / `warn: workspace setup failed`
 
-openspec 1.6.0 移除了 `context-store` 和 `workspace` 子命令。**可安全忽略**——不影响 openspec/、.codex/、verify.config.yaml 的生成。多栈协调改用 openspec 1.6.0 的 `workset` 替代（见 SKILL.md "Cross-Stack Feature"）。
+OpenSpec 已移除 `context-store` 和 `workspace` 子命令。**可安全忽略**——不影响 openspec/、.agents/、verify.config.yaml 的生成。多栈协调改用 `workset` 替代（见 SKILL.md "Cross-Stack Feature"）。
 
 #### Q5: 已有 AGENTS.md 会被覆盖吗？
 
@@ -252,6 +252,10 @@ scaffold 最多支持 3 种栈类型（`backend`、`frontend`、`frontend-mobile
 #### Q7: verify.config.yaml 的 build/test 命令不对
 
 scaffold 按栈类型给默认值（backend → `mvn compile -q`，frontend → `pnpm build`）。如果技术栈不同（如 Python/Go 后端、npm 前端），**生成后手动编辑** `openspec/verify.config.yaml`。
+
+#### Q8: 跑了 `openspec update` 后，`$openspec-propose` 的 LoopForge 触发器没了
+
+`openspec update` 会重写它生成的 skill 文件，LoopForge 注入的触发器/门禁被一并清掉。**重跑一次 `scaffold.sh`**（非破坏性、幂等）即可恢复注入。同理适用于升级 OpenSpec 大版本后（如 1.x → 新版，skill 目录从 `.codex/skills/` 迁到 `.agents/skills/` 时，重跑 `openspec init` + `scaffold.sh`）。
 
 ---
 
@@ -290,7 +294,7 @@ scaffold 按栈类型给默认值（backend → `mvn compile -q`，frontend → 
 
    | 盘点项 | 写入位置 |
    |:--|:--|
-   | 模块图 / 架构 | `openspec/project.md` |
+   | 模块图 / 架构 | `openspec/README.md` 的 `## Project Overview` |
    | 统一返回 + 错误码 | `openspec/specs/errors/spec.md` |
    | 接口约定 / 鉴权 | `openspec/specs/api/spec.md` |
    | 数据访问约定 | `openspec/specs/data/spec.md` |
@@ -330,7 +334,7 @@ openspec instructions --change <n>  # 取该 artifact 富化指引
 
 ## 场景三:跨栈功能协调(前后端联动)
 
-当一个功能跨多个栈(如前端小程序 + 后端 Java,分属独立 git 仓库),单栈 change 不够:前端 agent 按跨域禁令正确排除后端,但"声明的后端依赖"没有归属,会被静默丢失(没人创建对应的兄弟 change)。scaffold.sh 对 ≥2 栈已自动建好协调层(`openspec/coordination/` + workset),用 LoopForge 约定的 **协调文档(父级)+ per-stack change(子级,`--goal` 软标签)** 模式解决(OpenSpec 1.6.0 已移除原生 initiative/workspace)。
+当一个功能跨多个栈(如前端小程序 + 后端 Java,分属独立 git 仓库),单栈 change 不够:前端 agent 按跨域禁令正确排除后端,但"声明的后端依赖"没有归属,会被静默丢失(没人创建对应的兄弟 change)。scaffold.sh 对 ≥2 栈已自动建好协调层(`openspec/coordination/` + workset),用 LoopForge 约定的 **协调文档(父级)+ per-stack change(子级,`--goal` 软标签)** 模式解决(OpenSpec 已移除原生 initiative/workspace)。
 
 ### 对话 · 跨栈功能
 
@@ -359,7 +363,7 @@ openspec instructions --change <n>  # 取该 artifact 富化指引
 4. **各自实现**(跨域禁令不变;前端 mock 优先)-> 各自 `$openspec-verify` -> 各自 `$openspec-archive-change`
 5. **完成门禁**:在 `openspec/coordination/task-flow.md` 登记表里确认两个 change 都 verify PASS -> 功能才算完
 
-> 协调会话(中立地,不写领域代码):`openspec workset open <项目> --tool code` 打开所有栈;1.6.0 暂时禁用 agent 直接打开,需手动在项目根启动 codex。
+> 协调会话(中立地,不写领域代码):`openspec workset open <项目> --tool code` 打开所有栈;agent 直接打开暂不可用,需手动在项目根启动 codex。
 > 跨栈的接口契约/设计决策放在 `openspec/coordination/task-flow.md` 的 `design`/`decisions` 里,双方共享。
 
 ---
@@ -409,7 +413,7 @@ openspec instructions --change <n>  # 取该 artifact 富化指引
   │     └─ 全部 verify PASS -> 功能才算完
   │
   └─ 5. 归档
-        各自 $openspec-archive-change -> 移入 openspec/archive/
+        各自 $openspec-archive-change -> 移入 openspec/changes/archive/
 ```
 
 #### 接口契约共享
@@ -596,7 +600,7 @@ AI: (openspec-verify skill)
 ```
 你: "归档"
 AI: (检查 verify.md -> overall: PASS)
-    "门禁通过,归档到 openspec/archive/"
+    "门禁通过,归档到 openspec/changes/archive/"
 ```
 
 > **一人团队心法**:你不需要同时开两个会话。先后端会话做完 3 个任务(可能 20 分钟),再切到前端会话做 2 个任务(可能 10 分钟)。SDD 的 progress.md 记录了每一步状态,即使中途打断,新会话读 progress.md 就能恢复。

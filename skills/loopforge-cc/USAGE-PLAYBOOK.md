@@ -83,7 +83,7 @@ cd ./myproject
 
 **AI**:
 1. **读取真实技术栈**：从 `pom.xml`（Java 版本、Spring Boot 版本、模块列表、数据库驱动）、`package.json`（框架、UI 库、构建/测试命令）提取信息。
-2. **批量填充占位符**：用脚本替换 `openspec/project.md`、各栈 `CLAUDE.md` + `AGENTS.md`（两者须镜像一致）、根 `CLAUDE.md` 中的 `[fill]`、`[e.g. ...]`、`[one-line business description]` 等占位符。
+2. **批量填充占位符**：用脚本替换 `openspec/README.md`（`## Project Overview`）、各栈 `CLAUDE.md` + `AGENTS.md`（两者须镜像一致）、根 `CLAUDE.md` 中的 `[fill]`、`[e.g. ...]`、`[one-line business description]` 等占位符。
 3. **修正 verify.config.yaml**：根据实际技术栈调整 build/test 命令。例如：
    - ops_wechat 有 vitest -> `test: pnpm test:run`（非 `null`）
    - ops_wechat 构建目标是微信小程序 -> `build: pnpm build:mp`（非 `pnpm build`）
@@ -122,7 +122,7 @@ cd ./myproject
 ./scaffold.sh <项目名> [选项]
 ```
 
-**项目名是必填位置参数**，即使使用了 `--dir .`。用于默认目录名、context-store 命名、`@@PROJECT_NAME@@` 占位符替换。
+**项目名是必填位置参数**，即使使用了 `--dir .`。用于默认目录名、workset 命名、`@@PROJECT_NAME@@` 占位符替换。
 
 ### 全部参数
 
@@ -213,7 +213,7 @@ rm -rf backend frontend-web
 
 #### Q4: `warn: context-store setup failed` / `warn: workspace setup failed`
 
-openspec 1.6.0 移除了 `context-store` 和 `workspace` 子命令。**可安全忽略**——不影响 openspec/、.claude/、verify.config.yaml 的生成。多栈协调改用 openspec 1.6.0 的 `workset` 替代（见 SKILL.md "Cross-Stack Feature"）。
+OpenSpec 已移除 `context-store` 和 `workspace` 子命令。**可安全忽略**——不影响 openspec/、.claude/、verify.config.yaml 的生成。多栈协调改用 `workset` 替代（见 SKILL.md "Cross-Stack Feature"）。
 
 #### Q5: 已有 CLAUDE.md 会被覆盖吗？
 
@@ -228,6 +228,10 @@ scaffold 最多支持 3 种栈类型（`backend`、`frontend`、`frontend-mobile
 #### Q7: verify.config.yaml 的 build/test 命令不对
 
 scaffold 按栈类型给默认值（backend → `mvn compile -q`，frontend → `pnpm build`）。如果技术栈不同（如 Python/Go 后端、npm 前端），**生成后手动编辑** `openspec/verify.config.yaml`。
+
+#### Q8: 跑了 `openspec update` 后，`/opsx:propose` 的 Superpowers 触发器没了
+
+`openspec update` 会重写它生成的命令/skill 文件，LoopForge 注入的触发器/门禁被一并清掉。**重跑一次 `scaffold.sh`**（非破坏性、幂等）即可恢复注入。同理适用于升级 OpenSpec 大版本后（如 1.x → 新版，命令路径或 skill 目录变化时）。
 
 ---
 
@@ -266,7 +270,7 @@ scaffold 按栈类型给默认值（backend → `mvn compile -q`，frontend → 
 
    | 盘点项 | 写入位置 |
    |:--|:--|
-   | 模块图 / 架构 | `openspec/project.md` |
+   | 模块图 / 架构 | `openspec/README.md` 的 `## Project Overview` |
    | 统一返回 + 错误码 | `openspec/specs/errors/spec.md` |
    | 接口约定 / 鉴权 | `openspec/specs/api/spec.md` |
    | 数据访问约定 | `openspec/specs/data/spec.md` |
@@ -289,7 +293,7 @@ scaffold 按栈类型给默认值（backend → `mvn compile -q`，frontend → 
 | 设计 | (UI 开发时,`/opsx:apply` 前) | 先做 HTML 原型,两条路:① 纯代码优先 — 直接写 HTML/CSS(或 React+Tailwind/shadcn)→ `browser` 渲染 → `screenshot` 自检(简单页/快速原型最快);② `frontend-app-builder` skill — Claude 当资深前端设计师 → Image Gen 出视觉概念稿 → 用户确认 → 忠实实现成代码 → `browser` + `view_image` 对比到 10/10 还原(全程不碰 Figma)。主力栈:`build-web-apps`(`frontend-app-builder` + `shadcn-best-practices`)+ `browser` + `screenshot`;静态/单文件默认 HTML/CSS,复杂 app 才上 React+Vite |
 | 实现 | `/opsx:apply` | TDD:红→绿→重构,前后端跨域隔离、mock 优先 |
 | 验证 | `/opsx:verify` | 三层验证(L1 构建 / L2 spec 对齐 / L3 测试),写 `verify.md` 凭证 |
-| 归档 | `/opsx:archive` | 检查 `verify.md` 门禁后移入 `openspec/archive/` |
+| 归档 | `/opsx:archive` | 检查 `verify.md` 门禁后移入 `openspec/changes/archive/` |
 
 会话保持:`/resume`、`/branch`、`/rewind`。
 
@@ -297,7 +301,7 @@ scaffold 按栈类型给默认值（backend → `mvn compile -q`，frontend → 
 
 ## 场景三:跨栈功能协调(前后端联动)
 
-当一个功能跨多个栈(如前端小程序 + 后端 Java,分属独立 git 仓库),单栈 change 不够:前端 agent 按跨域禁令正确排除后端,但"声明的后端依赖"没有归属,会被静默丢失(没人创建对应的兄弟 change)。scaffold.sh 对 ≥2 栈已自动建好协调层(`openspec/coordination/` + workset),用 LoopForge 约定的 **协调文档(父级)+ per-stack change(子级,`--goal` 软标签)** 模式解决(OpenSpec 1.6.0 已移除原生 initiative/workspace)。
+当一个功能跨多个栈(如前端小程序 + 后端 Java,分属独立 git 仓库),单栈 change 不够:前端 agent 按跨域禁令正确排除后端,但"声明的后端依赖"没有归属,会被静默丢失(没人创建对应的兄弟 change)。scaffold.sh 对 ≥2 栈已自动建好协调层(`openspec/coordination/` + workset),用 LoopForge 约定的 **协调文档(父级)+ per-stack change(子级,`--goal` 软标签)** 模式解决(OpenSpec 已移除原生 initiative/workspace)。
 
 ### 对话 · 跨栈功能
 
@@ -326,7 +330,7 @@ scaffold 按栈类型给默认值（backend → `mvn compile -q`，frontend → 
 4. **各自实现**(跨域禁令不变;前端 mock 优先)-> 各自 `/opsx:verify` -> 各自 `/opsx:archive`
 5. **完成门禁**:在 `openspec/coordination/task-flow.md` 登记表里确认两个 change 都 verify PASS -> 功能才算完
 
-> 协调会话(中立地,不写领域代码):`openspec workset open <项目> --tool code` 打开所有栈;1.6.0 暂时禁用 agent 直接打开,需手动在项目根启动 claude。
+> 协调会话(中立地,不写领域代码):`openspec workset open <项目> --tool code` 打开所有栈;agent 直接打开暂不可用,需手动在项目根启动 claude。
 > 跨栈的接口契约/设计决策放在 `openspec/coordination/task-flow.md` 的 `design`/`decisions` 里,双方共享。
 
 ---
@@ -375,7 +379,7 @@ scaffold 按栈类型给默认值（backend → `mvn compile -q`，frontend → 
   │     └─ 全部 verify PASS -> 功能才算完
   │
   └─ 5. 归档
-        各自 /opsx:archive -> 移入 openspec/archive/
+        各自 /opsx:archive -> 移入 openspec/changes/archive/
 ```
 
 #### 接口契约共享
@@ -556,7 +560,7 @@ AI: "L1 构建:
 ```
 你: /opsx:archive ticket-export-pdf
 AI: (检查 verify.md -> overall: PASS)
-    "门禁通过,归档到 openspec/archive/"
+    "门禁通过,归档到 openspec/changes/archive/"
 ```
 
 > **一人团队心法**:你不需要同时开两个会话。先后端会话做完 3 个任务(可能 20 分钟),再切到前端会话做 2 个任务(可能 10 分钟)。SDD 的 progress.md 记录了每一步状态,即使中途打断,新会话读 progress.md 就能恢复。

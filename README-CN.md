@@ -12,7 +12,7 @@ LoopForge 的出发点很简单：一个人维护多个已上线的老项目 —
 
 最初尝试了优秀的规格驱动框架 spec-superflow，但它预设项目从零开始或已有测试基线，在实际使用中对无测试的老代码会拦截每一次改动。LoopForge 在向 spec-superflow 学习后，选择了不同的路线：用更轻量的生成器方式（shell + Python），先审计缺什么，再在不破坏现有代码的前提下重构，在严格 TDD 会卡死的环节用特征化测试与债务登记安全降级。
 
-LoopForge 围绕工业级三层范式 **OpenSpec + Superpowers + Harness**构建，以 AI 协作优化 Skill 的形式提供两个并列版本 —— 各版本内置独立的 `scaffold.sh`（CC 版创建 `.claude/`，Codex 版创建 `.codex/`）：
+LoopForge 围绕工业级三层范式 **OpenSpec + Superpowers + Harness**构建，以 AI 协作优化 Skill 的形式提供两个并列版本 —— 各版本内置独立的 `scaffold.sh`（CC 版创建 `.claude/`，Codex 版创建 `.agents/`）：
 
 | 版本 | Skill | AI 工具 | 活入口文件 | 纪律(HOW) | Loop 驱动方式 |
 |:--|:--|:--|:--|:--|:--|
@@ -83,19 +83,19 @@ cp -r skills/loopforge-cc /path/to/project/.claude/skills/loopforge-cc
 cp -R skills/loopforge-codex ~/.codex/skills/loopforge-codex
 ```
 
-`scaffold.sh` 已是 skill 目录内的实体文件,普通拷贝即可。重启后 skill 按 `description` 自动触发,也可用 `$loopforge-codex` 显式调用;`openspec init --tools codex` 还会为 Codex 生成 `/opsx:` 斜杠命令(`/opsx:propose`、`/opsx:apply`、`/opsx:archive`、`/opsx:explore`、`/opsx:sync`)。
+`scaffold.sh` 已是 skill 目录内的实体文件,普通拷贝即可。重启后 skill 按 `description` 自动触发,也可用 `$loopforge-codex` 显式调用;`openspec init --tools codex` 还会生成 OpenSpec 工作流技能(OpenSpec 1.15+ 装到 `.agents/skills/openspec-*`)。`/opsx:verify` 三层验证是 LoopForge 附加的,不属于 OpenSpec。
 
 > 若你之前把旧版拷进了 `~/.codex/skills/loop-eng`,先删掉以免两个 skill 抢同一意图:`rm -rf ~/.codex/skills/loop-eng`。
 
 ## 脚手架生成新项目
 
-每个版本有自己的 `scaffold.sh`。CC 版创建 `.claude/`;Codex 版创建 `.codex/`。两者都生成 `CLAUDE.md` + `AGENTS.md` 镜像:
+每个版本有自己的 `scaffold.sh`。CC 版创建 `.claude/`;Codex 版创建 `.agents/`。两者都生成 `CLAUDE.md` + `AGENTS.md` 镜像:
 
 ```bash
 # Claude Code(创建 .claude/)
 ./skills/loopforge-cc/scaffold.sh myapp
 
-# Codex(创建 .codex/)
+# Codex(创建 .agents/)
 ./skills/loopforge-codex/scaffold.sh myapp --tools codex
 
 # 三栈(web + mobile)
@@ -131,7 +131,7 @@ cp -R skills/loopforge-codex ~/.codex/skills/loopforge-codex
 myapp/
 ├── CLAUDE.md                 ← 导航中心(≤120 行)-- Claude Code 入口
 ├── AGENTS.md                 ← Codex 导航中心(与 CLAUDE.md 镜像)
-├── openspec/                 ← WHAT:README、project.md、specs/{api,data,errors}、changes/_template、archive
+├── openspec/                 ← WHAT:README(含 Project Overview)、specs/{api,data,errors}、changes/_template、changes/archive
 │   ├── sdd/                  ← SDD:implementer-prompt.md、reviewer-prompt.md、progress.md
 │   ├── guard.sh              ← 相位门禁:proposing->applying->verifying->archived
 │   ├── ensure-branch.sh      ← Worktree 隔离(legacy git 容错)
@@ -139,7 +139,7 @@ myapp/
 │   ├── loop-state.yaml       ← 相位状态机(phase/change/retry_count/execution_mode)
 │   └── verify.config.yaml    ← 各栈 build/test 命令(供 /opsx:verify L1/L3 用)
 ├── .claude/  (CC 版)         ← HOW:settings.json(权限+钩子)、rules/、agents/{reviewer,coordinator,implementer}
-├── .codex/   (Codex 版)      ← HOW:skills/openspec-*(propose/apply/verify/archive + trigger 注入)
+├── .agents/  (Codex 版)      ← HOW:skills/openspec-*(propose/apply/verify/archive + trigger 注入;旧版 .codex/)
 ├── backend/{CLAUDE,AGENTS}.md   ← Backend Agent(Claude Code / Codex)
 └── frontend-web/{CLAUDE,AGENTS}.md ← Frontend Agent(Claude Code / Codex)
 ```
@@ -154,7 +154,7 @@ myapp/
 
 **Codex:** 无需额外安装 -- Superpowers 五步纪律已作为指令写进生成的 `AGENTS.md`,Loop 由 `openspec` CLI 驱动。
 
-随后填写 `openspec/project.md`、`openspec/specs/*` 及各栈 `CLAUDE.md` / `AGENTS.md` 中的 `[方括号]` 占位符。
+随后填写 `openspec/README.md`(`## Project Overview`)、`openspec/specs/*` 及各栈 `CLAUDE.md` / `AGENTS.md` 中的 `[方括号]` 占位符。
 
 ## 审计现有项目
 
