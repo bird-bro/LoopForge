@@ -20,6 +20,9 @@ FRONTEND_DIR="frontend-web"
 MOBILE_DIR="frontend-mobile"
 RUN_INIT=1
 TOOLS="claude"
+# Language for OpenSpec-generated artifacts (openspec init --language; OpenSpec 1.10+).
+# Empty = CLI default. Headings / SHALL / MUST stay English either way, so strict validation holds.
+LANGUAGE=""
 # CJK char ratio (%) above which an auto-loaded .md is flagged Chinese (O7 check + tokens).
 # Override per-run: CJK_THRESHOLD=5 ./scaffold.sh check ./myapp
 CJK_THRESHOLD="${CJK_THRESHOLD:-10}"
@@ -27,7 +30,7 @@ CJK_THRESHOLD="${CJK_THRESHOLD:-10}"
 # Override per-run: TOKEN_THRESHOLD=2000 ./scaffold.sh check ./myapp
 TOKEN_THRESHOLD="${TOKEN_THRESHOLD:-3000}"
 # LoopForge version - written into generated projects for traceability.
-LOOPFORGE_VERSION="${LOOPFORGE_VERSION:-2.2.0}"
+LOOPFORGE_VERSION="${LOOPFORGE_VERSION:-2.3.0}"
 
 usage() {
   cat <<'USG'
@@ -53,6 +56,9 @@ Generate options:
   --mobile-dir <n>     mobile frontend dir name (default: frontend-mobile)
   --tools <list>       AI tool(s) for openspec init, comma list (default: claude)
   --no-init            do not run `openspec init` (init separately later)
+  --language <lang>    write new OpenSpec artifacts in this language (passed to
+                       `openspec init --language`; headings / SHALL / MUST stay
+                       English, so strict validation still passes)
   -h, --help           show this help
 
 Examples:
@@ -157,16 +163,19 @@ generate_scaffold() {
   # ---------- 0. openspec init (generates openspec/, .claude/commands/, base skills) ----------
   if [[ $RUN_INIT -eq 1 ]]; then
     if command -v openspec >/dev/null 2>&1; then
-      echo "==> Running: openspec init --tools $TOOLS"
+      echo "==> Running: openspec init --tools $TOOLS${LANGUAGE:+ --language $LANGUAGE}"
       # --no-copilot-cloud: non-interactive answer to the OpenSpec 1.15+ Copilot cloud prompt.
       # Tradeoff: when github-copilot is not among --tools (always, today) OpenSpec prints a
       # yellow "--copilot-cloud/--no-copilot-cloud was ignored..." note - cosmetic noise,
       # chosen over a blocking TTY prompt mid-scaffold. --no-animation keeps CI logs clean.
-      openspec init --tools "$TOOLS" --no-copilot-cloud --no-animation \
+      _init_args=(--tools "$TOOLS" --no-copilot-cloud --no-animation)
+      [[ -n "$LANGUAGE" ]] && _init_args+=(--language "$LANGUAGE")
+      openspec init "${_init_args[@]}" \
         || echo "  warn: openspec init failed or already initialized"
     else
       echo "  warn: openspec CLI not found."
       echo "        install: npm i -g @fission-ai/openspec@latest"
+      echo "        (no Node? standalone: curl -fsSL https://raw.githubusercontent.com/Fission-AI/OpenSpec/main/scripts/binary/install.sh | sh)"
       echo "        then run 'openspec init' in $TARGET_DIR"
     fi
   fi
@@ -270,6 +279,7 @@ Three-layer verification for an OpenSpec change. Confirms the implementation act
    This is the core layer. It is NOT a CLI call - it is a semantic audit you perform.
 
    a. **Read every delta spec** from `artifactPaths.specs.existingOutputPaths`. Extract each `## Scenario:` block and its WHEN/THEN clauses. These scenarios ARE the verification cases.
+      - For MODIFIED-heavy changes, run `openspec show <name> --diff` first: the delta restates every kept scenario verbatim, so the full delta hides what actually changed - `--diff` isolates the real per-requirement edits (ADDED in full, REMOVED/RENAMED as authored). Also use it to recover a REMOVED requirement's original text when checking "the behavior is actually gone".
    b. **For each scenario**, search the affected stacks' code for implementation evidence:
       - Use `rg` to find the code path(s) the scenario describes (e.g., a route handler, a component, a service method).
       - Read the matched code to confirm it actually fulfills the WHEN/THEN.
@@ -622,6 +632,9 @@ After the change is moved to `changes/archive/`, sync its delta specs into the m
 4. `openspec archive` already updates main specs on archive; the `openspec-sync-specs` skill can assist with manual merge review. (There is no standalone `openspec sync` CLI subcommand - `sync` is an agent workflow.)
 5. Verify no conflicts: same scenario name with different WHEN/THEN in main spec -> warn user.
 This ensures the main specs always reflect what was actually built, not what was planned.
+
+## Archived-Tasks Integrity (post-archive)
+After the move completes, run `openspec validate --archived`. Non-zero exit -> some archived change still has unticked tasks.md boxes: name it and offer to finish the remaining tasks or revert the archive. This catches "archived but unfinished" drift that the verify.md gate cannot see (verify.md proves verification passed, not that every task was done).
 <!-- /LoopForge: verify-gate-archive -->
 __LOOPFORGE_TRIG__
 
@@ -2423,7 +2436,7 @@ cmd_list() {
       --backend-dir)   BACKEND_DIR="$2"; shift 2;;
       --frontend-dir)  FRONTEND_DIR="$2"; shift 2;;
       --mobile-dir)    MOBILE_DIR="$2"; shift 2;;
-      --dir|--tools|--no-init) shift 2 2>/dev/null || shift;;  # ignored (list uses temp dir)
+      --dir|--tools|--language|--no-init) shift 2 2>/dev/null || shift;;  # ignored (list uses temp dir)
       -h|--help)       echo "Usage: scaffold.sh list [--stacks <list>] [--backend-dir <n>] [--frontend-dir <n>] [--mobile-dir <n>]"; exit 0;;
       *) shift;;  # silently consume positional args (e.g. project name)
     esac
@@ -2759,6 +2772,7 @@ while [[ $# -gt 0 ]]; do
     --frontend-dir)  FRONTEND_DIR="$2"; shift 2;;
     --mobile-dir)    MOBILE_DIR="$2"; shift 2;;
     --tools)         TOOLS="$2"; shift 2;;
+    --language)      LANGUAGE="$2"; shift 2;;
     --no-init)       RUN_INIT=0; shift;;
     -h|--help)       usage; exit 0;;
     *)

@@ -49,7 +49,7 @@ cmd_list() {
       --backend-dir)   BACKEND_DIR="$2"; shift 2;;
       --frontend-dir)  FRONTEND_DIR="$2"; shift 2;;
       --mobile-dir)    MOBILE_DIR="$2"; shift 2;;
-      --dir|--tools|--no-init) shift 2 2>/dev/null || shift;;  # ignored (list uses temp dir)
+      --dir|--tools|--language|--no-init) shift 2 2>/dev/null || shift;;  # ignored (list uses temp dir)
       -h|--help)       echo "Usage: scaffold.sh list [--stacks <list>] [--backend-dir <n>] [--frontend-dir <n>] [--mobile-dir <n>]"; exit 0;;
       *) shift;;  # silently consume positional args (e.g. project name)
     esac
@@ -385,6 +385,7 @@ while [[ $# -gt 0 ]]; do
     --frontend-dir)  FRONTEND_DIR="$2"; shift 2;;
     --mobile-dir)    MOBILE_DIR="$2"; shift 2;;
     --tools)         TOOLS="$2"; shift 2;;
+    --language)      LANGUAGE="$2"; shift 2;;
     --no-init)       RUN_INIT=0; shift;;
     -h|--help)       usage; exit 0;;
     *)
