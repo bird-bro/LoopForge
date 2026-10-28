@@ -257,6 +257,12 @@ scaffold 按栈类型给默认值（backend → `mvn compile -q`，frontend → 
 
 `openspec update` 会重写它生成的 skill 文件，LoopForge 注入的触发器/门禁被一并清掉。**重跑一次 `scaffold.sh`**（非破坏性、幂等）即可恢复注入。同理适用于升级 OpenSpec 大版本后（如 1.x → 新版，skill 目录从 `.codex/skills/` 迁到 `.agents/skills/` 时，重跑 `openspec init` + `scaffold.sh`）。
 
+> 提示：update 前先 `openspec update --dry-run`（1.15+，加 `--json` 可机读）预览它会增/改/删哪些文件，对即将被重写的注入点心里有数。
+#### Q9: 想用 `/opsx:continue`、`/opsx:ff`、`/opsx:new` 这些命令？默认没装
+
+OpenSpec 1.15 默认 profile（core）只装 propose / explore / apply / update / sync / archive 六个 workflow。跑 **`openspec config profile`**（交互选择，或传 preset 快捷设置）按需追加 `new` / `continue` / `ff` / `bulk-archive` / `onboard` 等。`/opsx:verify` 不在此列——它是 LoopForge 注入的，scaffold 自带。
+
+
 ---
 
 ## 框架盘点:进入 Loop 循环前的项目分析(老项目必做)

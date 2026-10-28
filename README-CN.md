@@ -148,7 +148,7 @@ myapp/
 
 ### 需另外安装的组件(按版本)
 
-**两者皆需:** OpenSpec CLI -- `npm i -g @fission-ai/openspec@latest`(脚手架会自动跑 `openspec init`)。
+**两者皆需:** OpenSpec CLI -- `npm i -g @fission-ai/openspec@latest`,或免 Node 的 standalone 一行安装:`curl -fsSL https://raw.githubusercontent.com/Fission-AI/OpenSpec/main/scripts/binary/install.sh | sh`(macOS/Linux;Windows 用 `irm .../install.ps1 | iex`)。脚手架会自动跑 `openspec init`。
 
 **仅 Claude Code:** Superpowers 技能集(`brainstorm`、`writing-plans`、`executing-plans`、`code-review`、`verification-before-completion`)与 `frontend-design`(仅前端项目)。它们位于 `.claude/skills/`,由 `/opsx:` 命令自动触发。
 

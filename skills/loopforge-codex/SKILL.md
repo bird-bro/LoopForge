@@ -74,11 +74,12 @@ Generate a complete Loop Engineering framework from scratch.
 | `--mobile-dir <name>` | `frontend-mobile` | Mobile code dir name |
 | `--tools <list>` | `codex` | openspec init tool type |
 | `--no-init` | (off) | Skip `openspec init`, generate LoopForge layer only |
+| `--language <lang>` | (empty) | Artifact language, passed to `openspec init --language` (1.10+); headings/SHALL stay English |
 
 > For existing projects: `ls` the project root first, then pass `--*-dir` flags matching real directory names. The number of `--*-dir` flags depends on how many stacks the project has.
 
 ### Prerequisites
-- OpenSpec CLI: `openspec --version` (install: `npm i -g @fission-ai/openspec@latest`)
+- OpenSpec CLI: `openspec --version` (install: `npm i -g @fission-ai/openspec@latest`; (no Node? standalone one-line install: `curl -fsSL https://raw.githubusercontent.com/Fission-AI/OpenSpec/main/scripts/binary/install.sh | sh` on macOS/Linux, or `irm https://raw.githubusercontent.com/Fission-AI/OpenSpec/main/scripts/binary/install.ps1 | iex` on Windows))
 - Node/npm available
 
 ### Steps
@@ -101,7 +102,7 @@ Generate a complete Loop Engineering framework from scratch.
 
 | # | Check | Criteria (Codex) | Fix |
 |:--|:--|:--|:--|
-| E1 | OpenSpec CLI installed | `openspec --version` returns valid version | `npm i -g @fission-ai/openspec@latest` |
+| E1 | OpenSpec CLI installed | `openspec --version` returns valid version | `npm i -g @fission-ai/openspec@latest`, or standalone one-line install (no Node needed; see prerequisites) |
 | E2 | Project initialized | `openspec/` exists with `specs/`, `changes/`, `changes/archive/` | `openspec init --tools codex` |
 | E3 | Codex harness entry present | Root `AGENTS.md` exists (Codex's live entry) | scaffold.sh / create `AGENTS.md` nav hub |
 | E4 | Frontend design guidance | Frontend `AGENTS.md` carries design-system/UI guidance (frontend only) | Add a "Design Standards" section to frontend `AGENTS.md` |

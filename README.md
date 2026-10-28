@@ -148,7 +148,7 @@ myapp/
 
 ### What you must install separately (per edition)
 
-**Both:** OpenSpec CLI - `npm i -g @fission-ai/openspec@latest` (scaffold runs `openspec init` for you).
+**Both:** OpenSpec CLI - `npm i -g @fission-ai/openspec@latest`, or standalone one-line install without Node: `curl -fsSL https://raw.githubusercontent.com/Fission-AI/OpenSpec/main/scripts/binary/install.sh | sh` (macOS/Linux; `irm .../install.ps1 | iex` on Windows). Scaffold runs `openspec init` for you.
 
 **Claude Code only:** Superpowers skills (`brainstorm`, `writing-plans`, `executing-plans`, `code-review`, `verification-before-completion`) and `frontend-design` (frontend projects). These live in `.claude/skills/` and are auto-triggered by the `/opsx:` commands.
 
