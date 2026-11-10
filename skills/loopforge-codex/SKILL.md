@@ -37,7 +37,7 @@ Key principles: Spec as Code. TDD enforced (not a slogan). Discipline baked into
 
 ## CLI Subcommands (`scaffold.sh`)
 
-The generator ships with ten subcommands (run directly, or ask the AI to run them). In a globally-installed skill, scaffold.sh lives next to this SKILL.md (e.g. `~/.codex/skills/loopforge-codex/scaffold.sh`); run it with an absolute path or copy it into the project.
+The generator ships with eleven subcommands (run directly, or ask the AI to run them). In a globally-installed skill, scaffold.sh lives next to this SKILL.md (e.g. `~/.codex/skills/loopforge-codex/scaffold.sh`); run it with an absolute path or copy it into the project.
 
 | Subcommand | Purpose |
 |:--|:--|
@@ -47,6 +47,7 @@ The generator ships with ten subcommands (run directly, or ask the AI to run the
 | `scaffold.sh tokens [project]` | Token audit of auto-loaded files - per-file tokens + CJK% (O7 overhead); no arg = cwd |
 | `scaffold.sh validate <change-dir>` | Validate a change's artifact structure (proposal/spec/design/tasks) |
 | `scaffold.sh changes [project]` | List all changes and their phase/status |
+| `scaffold.sh conflicts [project]` | File-ownership overlap check between active changes (parallel-safety gate) |
 | `scaffold.sh doctor [project]` | Health check: deps, scaffold, guard, verify config |
 | `scaffold.sh version` | Print LoopForge version + environment |
 | `scaffold.sh contract [--force] <change-dir>` | Auto-generate `execution-contract.md` from planning artifacts |

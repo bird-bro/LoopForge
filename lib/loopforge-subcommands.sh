@@ -153,6 +153,7 @@ cmd_doctor() {
   [[ -f "$proj/openspec/guard.sh" ]] && _dr_ok "guard.sh (phase gate)" || _dr_warn "guard.sh missing (re-run scaffold.sh)"
   [[ -f "$proj/openspec/loop-state.yaml" ]] && _dr_ok "loop-state.yaml (state machine)" || _dr_warn "loop-state.yaml missing"
   [[ -f "$proj/openspec/ensure-branch.sh" ]] && _dr_ok "ensure-branch.sh (worktree isolation)" || _dr_warn "ensure-branch.sh missing"
+  [[ -f "$proj/openspec/check-conflicts.sh" ]] && _dr_ok "check-conflicts.sh (parallel file-ownership check)" || _dr_warn "check-conflicts.sh missing"
   [[ -f "$proj/openspec/ensure-contract-fresh.sh" ]] && _dr_ok "ensure-contract-fresh.sh (contract freshness)" || _dr_warn "ensure-contract-fresh.sh missing"
   [[ -f "$proj/openspec/build-contract.sh" ]] && _dr_ok "build-contract.sh (contract auto-generation)" || _dr_warn "build-contract.sh missing (re-run scaffold.sh)"
   [[ -f "$proj/openspec/validate-artifacts.py" ]] && _dr_ok "validate-artifacts.py (schema validation)" || _dr_warn "validate-artifacts.py missing"
@@ -351,6 +352,21 @@ cmd_restructure() {
   echo "  See SKILL.md 'Mode: Restructure' Phase 1-5 for detailed extraction rules."
 }
 
+cmd_conflicts() {
+  [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]] && { echo "Usage: scaffold.sh conflicts [project-dir]  # file-ownership overlap check between active changes (parallel-safety)"; exit 0; }
+  local proj="${1:-.}"
+  local abs_dir
+  abs_dir="$(cd "$proj" 2>/dev/null && pwd)" || { echo "Error: not a directory: $proj" >&2; exit 1; }
+  local script=""
+  local cur="$abs_dir"
+  while [[ "$cur" != "/" && -z "$script" ]]; do
+    [[ -f "$cur/openspec/check-conflicts.sh" ]] && script="$cur/openspec/check-conflicts.sh"
+    cur="$(dirname "$cur")"
+  done
+  [[ -z "$script" ]] && { echo "Error: openspec/check-conflicts.sh not found. Run scaffold.sh (upgraded version) first to generate it." >&2; exit 2; }
+  bash "$script" "$abs_dir"
+}
+
 # ---------------- dispatch ----------------
 _subcmd="scaffold"
 case "${1:-}" in
@@ -359,6 +375,7 @@ case "${1:-}" in
   tokens|--tokens)                       _subcmd="tokens"; shift;;
   validate|--validate)                   _subcmd="validate"; shift;;
   changes|--changes)                     _subcmd="changes"; shift;;
+  conflicts|--conflicts)                _subcmd="conflicts"; shift;;
   doctor|--doctor)                       _subcmd="doctor"; shift;;
   version|--version|-V)                  _subcmd="version"; shift;;
   contract|--contract)                  _subcmd="contract"; shift;;
@@ -370,6 +387,7 @@ case "$_subcmd" in
   tokens) cmd_tokens "$@"; exit 0;;
   validate) cmd_validate "$@"; exit 0;;
   changes) cmd_changes "$@"; exit 0;;
+  conflicts) cmd_conflicts "$@"; exit 0;;
   doctor)  cmd_doctor  "$@"; exit 0;;
   version)     cmd_version     "$@"; exit 0;;
   contract)    cmd_contract    "$@"; exit 0;;

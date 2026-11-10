@@ -109,7 +109,7 @@ Options: `--stacks`, `--dir`, `--backend-dir`, `--frontend-dir`, `--mobile-dir`,
 
 ### `scaffold.sh` CLI subcommands
 
-Beyond the default scaffold, `scaffold.sh` ships nine more subcommands (run directly or ask the AI to run them):
+Beyond the default scaffold, `scaffold.sh` ships ten more subcommands (run directly or ask the AI to run them):
 
 | Subcommand | Purpose |
 |:--|:--|
@@ -122,6 +122,7 @@ Beyond the default scaffold, `scaffold.sh` ships nine more subcommands (run dire
 | `version` | Print LoopForge version + environment |
 | `contract [--force] <change-dir>` | Auto-generate `execution-contract.md` from planning artifacts |
 | `restructure [project]` | Analyze a monolithic entry file and plan a per-stack split |
+| `conflicts [project]` | File-ownership overlap check between active changes (parallel-safety gate) |
 
 > `check` runs an automatable subset (24 items: 3 env self-check + 21 structure) and prints PASS/PARTIAL/FAIL + a maturity score; ask the skill for the full 30-check semantic audit. `tokens` measures the O7 CJK overhead per file (`CJK_THRESHOLD` env, default 10%).
 
@@ -136,7 +137,8 @@ myapp/
 │   ├── guard.sh              ← Phase gate: proposing→applying→verifying→archived
 │   ├── ensure-branch.sh      ← Worktree isolation (legacy-aware git resilience)
 │   ├── ensure-contract-fresh.sh ← Execution-contract freshness check
-│   ├── loop-state.yaml       ← Phase state machine (phase/change/retry_count/execution_mode)
+│   ├── check-conflicts.sh    ← File-ownership overlap check between active changes
+│   ├── loop-state.yaml       ← Legacy shared state machine; per-change state lives in changes/<name>/loop-state.yaml
 │   └── verify.config.yaml    ← Per-stack build/test commands (local /opsx:verify L1/L3)
 ├── .claude/  (CC edition)    ← HOW: settings.json (perms+hooks), rules/, agents/{reviewer,coordinator,implementer}
 ├── .agents/  (Codex edition) ← HOW: skills/openspec-* (propose/apply/verify/archive + triggers; legacy: .codex/)

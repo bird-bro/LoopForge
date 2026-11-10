@@ -109,7 +109,7 @@ cp -R skills/loopforge-codex ~/.codex/skills/loopforge-codex
 
 ### `scaffold.sh` CLI 子命令
 
-除默认的脚手架生成外,`scaffold.sh` 还提供九个子命令(可直接运行,或让 AI 代跑):
+除默认的脚手架生成外,`scaffold.sh` 还提供十个子命令(可直接运行,或让 AI 代跑):
 
 | 子命令 | 用途 |
 |:--|:--|
@@ -122,6 +122,7 @@ cp -R skills/loopforge-codex ~/.codex/skills/loopforge-codex
 | `version` | 打印 LoopForge 版本 + 环境 |
 | `contract [--force] <change-dir>` | 从规划产物自动生成 `execution-contract.md` |
 | `restructure [project]` | 分析单体入口文件,规划按技术栈拆分 |
+| `conflicts [project]` | 检测活跃变更间的文件所有权重叠(并行开发安全门) |
 
 > `check` 跑可自动判定的子集(24 项 = 3 环境自检 + 21 结构合规),输出 PASS/PARTIAL/FAIL + 成熟度分;完整 30 项语义审计请让 skill 进 audit 模式。`tokens` 逐文件测量 O7 的 CJK 开销(`CJK_THRESHOLD` 环境变量,默认 10%)。
 

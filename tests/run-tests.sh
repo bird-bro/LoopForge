@@ -47,9 +47,11 @@ _CURRENT_TEST="Codex scaffold generates project"
 
 # Key files exist
 for f in openspec/guard.sh openspec/ensure-contract-fresh.sh openspec/build-contract.sh \
+         openspec/check-conflicts.sh \
          openspec/loop-state.yaml openspec/validate-artifacts.py openspec/verify.config.yaml \
          openspec/changes/_template/proposal.md openspec/changes/_template/specs/capability/spec.md \
-         openspec/changes/_template/execution-contract.md; do
+         openspec/changes/_template/execution-contract.md \
+         openspec/changes/_template/loop-state.yaml; do
   _CURRENT_TEST="CC: $f exists"
   assert_file_exists "$CC_PROJ/$f" "$_CURRENT_TEST"
   _CURRENT_TEST="Codex: $f exists"
@@ -57,7 +59,7 @@ for f in openspec/guard.sh openspec/ensure-contract-fresh.sh openspec/build-cont
 done
 
 # Generated scripts are executable
-for f in openspec/guard.sh openspec/ensure-contract-fresh.sh openspec/build-contract.sh; do
+for f in openspec/guard.sh openspec/ensure-contract-fresh.sh openspec/build-contract.sh openspec/check-conflicts.sh; do
   _CURRENT_TEST="CC: $f is executable"
   assert_executable "$CC_PROJ/$f" "$_CURRENT_TEST"
   _CURRENT_TEST="Codex: $f is executable"
@@ -65,7 +67,7 @@ for f in openspec/guard.sh openspec/ensure-contract-fresh.sh openspec/build-cont
 done
 
 # Generated scripts have valid syntax
-for script in guard.sh build-contract.sh ensure-contract-fresh.sh; do
+for script in guard.sh build-contract.sh ensure-contract-fresh.sh check-conflicts.sh; do
   _CURRENT_TEST="CC: $script syntax"
   bash -n "$CC_PROJ/openspec/$script" 2>&1; assert_exit_code 0 $? "$_CURRENT_TEST"
   _CURRENT_TEST="Codex: $script syntax"
@@ -211,6 +213,17 @@ out=$(bash "$CC_PROJ/openspec/ensure-contract-fresh.sh" --update "$CC_PROJ/opens
 assert_contains "$out" "Updated artifacts_hash" "$_CURRENT_TEST"
 assert_exit_code 0 $rc "CC update exit code"
 
+_CURRENT_TEST="CC --update creates per-change state file"
+assert_file_exists "$CC_PROJ/openspec/changes/test-change/loop-state.yaml" "$_CURRENT_TEST"
+
+_CURRENT_TEST="CC global loop-state.yaml stays untouched by per-change update"
+grep -q '^artifacts_hash: null' "$CC_PROJ/openspec/loop-state.yaml"; rc=$?
+assert_exit_code 0 $rc "$_CURRENT_TEST"
+
+_CURRENT_TEST="Codex --update creates per-change state file"
+bash "$CX_PROJ/openspec/ensure-contract-fresh.sh" --update "$CX_PROJ/openspec/changes/test-change" >/dev/null 2>&1
+assert_file_exists "$CX_PROJ/openspec/changes/test-change/loop-state.yaml" "$_CURRENT_TEST"
+
 _CURRENT_TEST="CC ensure-contract-fresh check (fresh)"
 bash "$CC_PROJ/openspec/ensure-contract-fresh.sh" "$CC_PROJ/openspec/changes/test-change" 2>&1; rc=$?
 assert_exit_code 0 $rc "$_CURRENT_TEST"
@@ -282,6 +295,84 @@ assert_contains "$out" "test-change" "$_CURRENT_TEST"
 _CURRENT_TEST="Codex changes lists test-change"
 out=$("$CX_SCAFFOLD" changes "$CX_PROJ" 2>&1); rc=$?
 assert_contains "$out" "test-change" "$_CURRENT_TEST"
+
+# ================================================================
+# 10b. GUARD WITH PER-CHANGE STATE
+# ================================================================
+test_group "10b. guard with per-change state"
+
+# Restore freshness after the stale-check mutation in section 8
+bash "$CC_PROJ/openspec/ensure-contract-fresh.sh" --update "$CC_PROJ/openspec/changes/test-change" >/dev/null 2>&1
+
+# Simulate completed tasks in the per-change state
+sed -i '' -e 's/^tasks_done: .*/tasks_done: 3/' -e 's/^tasks_total: .*/tasks_total: 3/' \
+  "$CC_PROJ/openspec/changes/test-change/loop-state.yaml" 2>/dev/null \
+  || sed -i -e 's/^tasks_done: .*/tasks_done: 3/' -e 's/^tasks_total: .*/tasks_total: 3/' \
+  "$CC_PROJ/openspec/changes/test-change/loop-state.yaml"
+
+_CURRENT_TEST="CC guard passes with per-change state"
+bash "$CC_PROJ/openspec/guard.sh" applying verifying "$CC_PROJ/openspec/changes/test-change" 2>&1; rc=$?
+assert_exit_code 0 $rc "$_CURRENT_TEST"
+
+# Incomplete tasks -> blocked
+sed -i '' -e 's/^tasks_done: .*/tasks_done: 2/' \
+  "$CC_PROJ/openspec/changes/test-change/loop-state.yaml" 2>/dev/null \
+  || sed -i -e 's/^tasks_done: .*/tasks_done: 2/' \
+  "$CC_PROJ/openspec/changes/test-change/loop-state.yaml"
+_CURRENT_TEST="CC guard blocks incomplete tasks (per-change state)"
+out=$(bash "$CC_PROJ/openspec/guard.sh" applying verifying "$CC_PROJ/openspec/changes/test-change" 2>&1); rc=$?
+assert_contains "$out" "incomplete" "$_CURRENT_TEST"
+assert_exit_code 1 $rc "$_CURRENT_TEST"
+
+# ================================================================
+# 10c. CONFLICTS SUBCOMMAND (parallel file-ownership check)
+# ================================================================
+test_group "10c. conflicts subcommand"
+
+mkdir -p "$CC_PROJ/openspec/changes/feat-a" "$CC_PROJ/openspec/changes/feat-b"
+cat > "$CC_PROJ/openspec/changes/feat-a/files.yaml" <<'FEOF'
+- ops_sev/src/main/java/com/x/OrderService.java
+- ops_sev/src/main/java/com/x/OrderMapper.xml
+FEOF
+cat > "$CC_PROJ/openspec/changes/feat-b/files.yaml" <<'FEOF'
+- ops_sev/src/main/java/com/x/OrderService.java
+- ops_web/src/api/order.ts
+FEOF
+
+_CURRENT_TEST="CC conflicts detects overlap"
+out=$("$CC_SCAFFOLD" conflicts "$CC_PROJ" 2>&1); rc=$?
+assert_contains "$out" "CONFLICT" "$_CURRENT_TEST"
+assert_contains "$out" "OrderService.java" "$_CURRENT_TEST"
+assert_exit_code 1 $rc "$_CURRENT_TEST"
+
+# Disjoint files -> parallel-safe
+cat > "$CC_PROJ/openspec/changes/feat-b/files.yaml" <<'FEOF'
+- ops_web/src/api/order.ts
+- ops_web/src/views/OrderList.vue
+FEOF
+
+_CURRENT_TEST="CC conflicts passes when disjoint"
+out=$("$CC_SCAFFOLD" conflicts "$CC_PROJ" 2>&1); rc=$?
+assert_contains "$out" "parallel-safe" "$_CURRENT_TEST"
+assert_exit_code 0 $rc "$_CURRENT_TEST"
+
+# Codex variant: same behavior
+mkdir -p "$CX_PROJ/openspec/changes/feat-a" "$CX_PROJ/openspec/changes/feat-b"
+printf -- '- ops_sev/src/A.java
+' > "$CX_PROJ/openspec/changes/feat-a/files.yaml"
+printf -- '- ops_sev/src/A.java
+- ops_web/src/B.vue
+' > "$CX_PROJ/openspec/changes/feat-b/files.yaml"
+
+_CURRENT_TEST="Codex conflicts detects overlap"
+out=$("$CX_SCAFFOLD" conflicts "$CX_PROJ" 2>&1); rc=$?
+assert_contains "$out" "CONFLICT" "$_CURRENT_TEST"
+assert_exit_code 1 $rc "$_CURRENT_TEST"
+
+# Doctor reports the new script
+_CURRENT_TEST="CC doctor reports check-conflicts.sh"
+out=$("$CC_SCAFFOLD" doctor "$CC_PROJ" 2>&1)
+assert_contains "$out" "check-conflicts.sh" "$_CURRENT_TEST"
 
 # ================================================================
 # 11. EDGE CASES

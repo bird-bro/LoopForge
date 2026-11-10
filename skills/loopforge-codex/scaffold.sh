@@ -7,6 +7,7 @@
 #   scaffold.sh list   [options]   preview the file manifest without writing
 #   scaffold.sh check  [project]   self-check (env + script) + LoopForge compliance audit
 #   scaffold.sh changes [project]  list all changes and their phase/status
+#   scaffold.sh conflicts [project]  file-ownership overlap check between active changes
 #   scaffold.sh doctor  [project]  health check: deps, scaffold, guard, verify config
 #
 # Non-destructive: existing files are skipped (safe to re-run).
@@ -47,6 +48,7 @@ Subcommands:
   version                    Print LoopForge version
   contract    <change-dir>   Auto-generate execution-contract.md from artifacts
   restructure [project-dir]  Analyze monolithic CLAUDE.md and plan per-stack split
+  conflicts   [project-dir]  File-ownership overlap check between active changes (parallel-safety)
 
 Generate options:
   --stacks <list>      comma list: backend,frontend,frontend-mobile (default: backend,frontend)
@@ -547,9 +549,9 @@ Before writing artifacts, ground the spec in real requirements:
    - Either way: review AI-marked sections (`<!-- AI: ... -->`), fill Test Obligations from TDD/characterization analysis.
    - Select execution mode: <=3 tasks and no cross-module deps -> Inline; >3 tasks same module and no risk indicators -> Batch Inline; else -> SDD.
    - Run `bash openspec/ensure-contract-fresh.sh --update <change-dir>` to store the artifacts hash.
-   - Update `openspec/loop-state.yaml`: set `execution_mode: <mode>`.
+   - Update `<change-dir>/loop-state.yaml` (create from `openspec/changes/_template/loop-state.yaml` if missing): set `execution_mode: <mode>`.
    - **DP-3 (Approval Gate):** summarize the contract and ask the user for explicit approval. No implementation without approval.
-5. **Phase gate (propose -> apply - programmatic):** run `bash openspec/guard.sh proposing applying <change-dir>`. Non-zero exit -> STOP. This checks: artifacts exist + schema valid + contract fresh. On PASS, update `loop-state.yaml`: set `phase: applying`, `change: <name>`.
+5. **Phase gate (propose -> apply - programmatic):** run `bash openspec/guard.sh proposing applying <change-dir>`. Non-zero exit -> STOP. This checks: artifacts exist + schema valid + contract fresh. On PASS, update `<change-dir>/loop-state.yaml`: set `phase: applying` (per-change state owns `change`; do not write the global file).
 
 ## Legacy Characterization (when modifying existing un-specced code)
 If the change touches code with NO existing spec in `openspec/specs/`:
@@ -571,7 +573,7 @@ Read `tasks.md` in the change directory. Count tasks and assess scope:
 - **tweak** (<=4 tasks, ALL config/doc/.env/.yml/.json/.md files, no source code): skip contract (0a) + TDD (2). Edit directly. L1 build check (4) still applies. Verify = L1 only.
 - **hotfix** (<=2 tasks, <=2 source files, no new schema/API/module): contract relaxed (minimal intent lock OK, skip full contract if <change>/execution-contract.md absent). TDD (2) applies, characterization allowed. Full verify.
 - **full** (anything larger): normal flow - all steps apply.
-If unsure, default to `full`. Persist: set `workflow_mode: <tweak|hotfix|full>` in `loop-state.yaml`. State the mode before proceeding.
+If unsure, default to `full`. Persist: set `workflow_mode: <tweak|hotfix|full>` in `<change-dir>/loop-state.yaml`. State the mode before proceeding.
 
 0. **Preflight (mandatory, before ANY implementation edit):**
    a. **Contract freshness:** run `bash openspec/ensure-contract-fresh.sh <change-dir>`. Non-zero exit -> STOP (spec changed since contract was generated; re-run propose to regenerate the contract and update the hash).
@@ -591,8 +593,8 @@ If unsure, default to `full`. Persist: set `workflow_mode: <tweak|hotfix|full>` 
      (b) append to `openspec/changes/<change>/debt.md`: `- [DEBT] <task>: no harness for
          <stack>; changed <what>; risk <low|med|high>` and mark the task `DEBT` in tasks.md.
      NEVER silently change legacy code with neither a test nor a debt record.
-2b. **Retry cap (3-strike) -> debugging side-path:** if a task build/test FAILs, attempt a fix and increment `retry_count` in `openspec/loop-state.yaml`. If `retry_count >= 3` for the SAME task -> enter **debugging phase** (do NOT keep blind-retrying):
-   - Update `loop-state.yaml`: set `phase: debugging`, increment `debug_attempts`.
+2b. **Retry cap (3-strike) -> debugging side-path:** if a task build/test FAILs, attempt a fix and increment `retry_count` in `<change-dir>/loop-state.yaml`. If `retry_count >= 3` for the SAME task -> enter **debugging phase** (do NOT keep blind-retrying):
+   - Update `<change-dir>/loop-state.yaml`: set `phase: debugging`, increment `debug_attempts`.
    - **Debug protocol (4 steps):**
      (a) **Reproduce**: write a minimal reproducer (test or script) that reliably triggers the failure. If you cannot reproduce it, you cannot fix it - say so.
      (b) **Root cause**: use `git bisect` or binary-search the change to find what introduced the issue. Read the failing code path end-to-end. State the root cause in one sentence.
@@ -601,7 +603,7 @@ If unsure, default to `full`. Persist: set `workflow_mode: <tweak|hotfix|full>` 
    - After debugging: set `phase: applying`, reset `retry_count: 0`, reset `debug_attempts: 0`. If debugging reveals spec/contract is wrong -> rewind to `proposing` (see 2c).
    - If `debug_attempts >= 2` for the SAME task -> STOP, escalate to user: architecture or spec assumption is likely wrong.
    Reset `retry_count` to 0 when moving to the next task.
-2c. **Mandatory Rewind:** if new scope appears, interfaces change materially, or design assumptions fail during implementation -> rewind to `proposing`, update the spec, then resume. Never patch the spec inside `applying` via ad-hoc chat. Update `loop-state.yaml`: set `phase: proposing`.
+2c. **Mandatory Rewind:** if new scope appears, interfaces change materially, or design assumptions fail during implementation -> rewind to `proposing`, update the spec, then resume. Never patch the spec inside `applying` via ad-hoc chat. Update `<change-dir>/loop-state.yaml`: set `phase: proposing`.
 2d. **SDD Execution (when execution_mode: SDD):** for each task batch:
    - Dispatch an implementer subagent using `openspec/sdd/implementer-prompt.md` template
      (CC: Task tool; Codex: role-switch to Implementer). Fill placeholders: [task name],
@@ -623,7 +625,7 @@ If unsure, default to `full`. Persist: set `workflow_mode: <tweak|hotfix|full>` 
 3. After each task code change: review the diff against the spec WHEN/THEN (use `requesting-code-review` skill if available).
 4. **Per-task build check (L1 quick verify):** after the code change, before marking the task done, run the affected stack build command from `openspec/verify.config.yaml` inside that stack dir. On PASS print `✓ 构建检查通过`; on FAIL do NOT mark done - pause and report. (Reuses the same config as the verify step - one source of truth.)
 5. On full completion: **activate `verification-before-completion`**, then run the `openspec-verify` skill (three-layer verification: L1 build / L2 spec alignment / L3 tests) and write `verify.md` - do NOT suggest archive directly.
-6. **Phase gate (apply -> verify - programmatic):** run `bash openspec/guard.sh applying verifying <change-dir>`. Non-zero exit -> STOP. This checks: tasks complete + contract fresh. On PASS, update `loop-state.yaml`: set `phase: verifying`.
+6. **Phase gate (apply -> verify - programmatic):** run `bash openspec/guard.sh applying verifying <change-dir>`. Non-zero exit -> STOP. This checks: tasks complete + contract fresh. On PASS, update `<change-dir>/loop-state.yaml`: set `phase: verifying`.
 <!-- /LoopForge: superpowers-trigger-apply -->
 __LT__
 )
@@ -638,7 +640,7 @@ Check for `verify.md` in the change root:
 - **overall: PASS** -> proceed.
 
 Read `verify.overall` from verify.md YAML frontmatter (written by the verify step). Runs after the spec-sync assessment and before `mv` into `openspec/changes/archive/`.
-Phase gate: run `bash openspec/guard.sh verifying archived <change-dir>`. Non-zero exit -> STOP. On PASS, update `openspec/loop-state.yaml`: set `phase: archived`. On FAIL or abandon: set `phase: abandoned`.
+Phase gate: run `bash openspec/guard.sh verifying archived <change-dir>`. Non-zero exit -> STOP. On PASS, update `<change-dir>/loop-state.yaml` (BEFORE the archive move): set `phase: archived`. On FAIL or abandon: set `phase: abandoned`.
 
 ## Delta-Spec Sync (after archive move - prevents spec rot)
 After the change is moved to `changes/archive/`, sync its delta specs into the main specs:
@@ -870,12 +872,47 @@ EOF
 Active work lives here. Each proposal is a directory containing:
 - `proposal.md` - Why / What / Scope / Success Criteria / Constraints / Risks
 - `specs/<capability>/spec.md` - delta spec (## ADDED/MODIFIED/REMOVED Requirements + ### Requirement: + #### Scenario:)
+- `loop-state.yaml` - per-change workflow state (copy from `_template/`; parallel-safe)
+- `files.yaml` (optional) - declared file ownership, one path per line; consumed by
+  `openspec/check-conflicts.sh` to detect overlap between active changes
+
+## Parallel development
+Different modules touching disjoint files may run in parallel sessions:
+1. Each change keeps its own `loop-state.yaml` (never write the global `openspec/loop-state.yaml`).
+2. Declare owned paths in `files.yaml`; run `bash openspec/check-conflicts.sh` before apply.
+3. No overlap -> parallel-safe. Overlap -> serialize the changes or use separate git worktrees.
+4. Parallel apply is fine; archive remains SERIAL (spec merges go to main `openspec/specs/`).
 
 Start from `_template/`. On completion, archive via `openspec archive <name>` (moves the directory into `changes/archive/`).
 EOF
 
+  cat <<'EOF' | write_if_absent openspec/changes/_template/loop-state.yaml
+# Per-change workflow state (parallel-safe: each change owns its own file).
+# Phases: proposing -> applying -> verifying -> archived | abandoned (terminal).
+#   debugging side-path: applying -> debugging (3-strike) -> applying | proposing (rewind)
+# Copy into each change directory: openspec/changes/<name>/loop-state.yaml.
+# The global openspec/loop-state.yaml is the legacy shared default - prefer this file.
+phase: proposing
+change: null
+current_task: null
+tasks_total: 0
+tasks_done: 0
+retry_count: 0
+debt_count: 0
+debug_attempts: 0
+workflow_mode: null
+artifacts_hash: null
+contract_hash: null
+execution_mode: null
+batches_completed: 0
+last_updated: null
+EOF
+
   cat <<'EOF' | write_if_absent openspec/loop-state.yaml
-# openspec/loop-state.yaml - LoopForge workflow state machine.
+# openspec/loop-state.yaml - LoopForge workflow state machine (legacy/shared default).
+# PARALLEL DEVELOPMENT: prefer the per-change state file openspec/changes/<name>/loop-state.yaml
+# (copy from openspec/changes/_template/loop-state.yaml). Per-change files avoid cross-session
+# write races; this global file stays as fallback for single-session and legacy changes.
 # Phases: proposing -> applying -> verifying -> archived | abandoned (terminal).
 #   debugging side-path: applying -> debugging (3-strike) -> applying | proposing (rewind)
 # MOD-3: phase gates read this file; MOD-4: retry_count >= 3 -> enter debugging.
@@ -1134,8 +1171,10 @@ dir="${1:-}"
 [[ -n "$dir" ]] || { echo "Usage: ensure-contract-fresh.sh [--update] <change-dir>" >&2; exit 2; }
 [[ -d "$dir" ]] || { echo "Error: not a directory: $dir" >&2; exit 2; }
 
-# Find loop-state.yaml by searching upward for openspec/
+# Resolve state file: per-change loop-state.yaml preferred (parallel-safe);
+# fall back to openspec/loop-state.yaml (legacy single-session state).
 abs_dir="$(cd "$dir" && pwd)"
+change_state="$abs_dir/loop-state.yaml"
 openspec_dir=""
 cur="$abs_dir"
 while [[ "$cur" != "/" ]]; do
@@ -1146,12 +1185,14 @@ while [[ "$cur" != "/" ]]; do
   cur="$(dirname "$cur")"
 done
 
-if [[ -z "$openspec_dir" ]]; then
-  echo "Error: openspec/loop-state.yaml not found" >&2
+if [[ -f "$change_state" ]]; then
+  state_file="$change_state"
+elif [[ -n "$openspec_dir" ]]; then
+  state_file="$openspec_dir/loop-state.yaml"
+else
+  echo "Error: neither $change_state nor openspec/loop-state.yaml found" >&2
   exit 1
 fi
-
-state_file="$openspec_dir/loop-state.yaml"
 
 # Compute current hash of planning artifacts
 hash_input=""
@@ -1168,16 +1209,30 @@ fi
 current_hash=$(printf '%s' "$hash_input" | shasum -a 256 | awk '{print $1}')
 
 if [[ "$mode" == "update" ]]; then
-  # Update hash in loop-state.yaml
-  if grep -q '^artifacts_hash:' "$state_file"; then
-    # macOS sed needs -i ''
+  # Update hash in the PER-CHANGE state file (parallel-safe); create it if missing.
+  if [[ ! -f "$change_state" ]]; then
+    {
+      echo "# Per-change workflow state (parallel-safe: each change owns its own file)."
+      echo "phase: proposing"
+      echo "change: $(basename "$dir")"
+    } > "$change_state"
+    # Seed workflow/progress fields from the legacy global state if present.
+    if [[ -n "$openspec_dir" && -f "$openspec_dir/loop-state.yaml" ]]; then
+      grep -E '^(workflow_mode|execution_mode|tasks_total|tasks_done):' "$openspec_dir/loop-state.yaml" >> "$change_state" 2>/dev/null || true
+    fi
+    grep -q '^workflow_mode:' "$change_state" || echo "workflow_mode: null" >> "$change_state"
+    grep -q '^execution_mode:' "$change_state" || echo "execution_mode: null" >> "$change_state"
+    grep -q '^tasks_total:' "$change_state" || echo "tasks_total: 0" >> "$change_state"
+    grep -q '^tasks_done:' "$change_state" || echo "tasks_done: 0" >> "$change_state"
+  fi
+  if grep -q '^artifacts_hash:' "$change_state"; then
     # Portable in-place sed (macOS BSD sed needs -i '' with space; GNU sed needs -i'')
     _tmp=$(mktemp)
-    sed "s/^artifacts_hash:.*/artifacts_hash: $current_hash/" "$state_file" > "$_tmp" && mv "$_tmp" "$state_file"
+    sed "s/^artifacts_hash:.*/artifacts_hash: $current_hash/" "$change_state" > "$_tmp" && mv "$_tmp" "$change_state"
   else
-    echo "artifacts_hash: $current_hash" >> "$state_file"
+    echo "artifacts_hash: $current_hash" >> "$change_state"
   fi
-  echo "Updated artifacts_hash: $current_hash"
+  echo "Updated artifacts_hash: $current_hash (in $change_state)"
   exit 0
 fi
 
@@ -1437,7 +1492,9 @@ check_abandon_safe() {
     [[ $_json -eq 0 ]] && echo "  [guard] abandon OK - debt.md has entries"
     return 0
   fi
-  local state="$openspec_dir/loop-state.yaml"
+  # Per-change state preferred (parallel-safe); fall back to global (legacy).
+  local state="$dir/loop-state.yaml"
+  [[ -f "$state" ]] || state="$openspec_dir/loop-state.yaml"
   if [[ -f "$state" ]]; then
     local done
     done=$(grep '^tasks_done:' "$state" 2>/dev/null | awk '{print $2}')
@@ -1462,8 +1519,10 @@ check_contract_fresh() {
 }
 
 check_tasks_complete() {
-  local state="$openspec_dir/loop-state.yaml"
-  [[ -f "$state" ]] || fail "loop-state.yaml not found"
+  # Per-change state preferred (parallel-safe); fall back to global (legacy).
+  local state="$dir/loop-state.yaml"
+  [[ -f "$state" ]] || state="$openspec_dir/loop-state.yaml"
+  [[ -f "$state" ]] || fail "loop-state.yaml not found (per-change or openspec/)"
   local done total
   done=$(grep '^tasks_done:' "$state" | awk '{print $2}')
   total=$(grep '^tasks_total:' "$state" | awk '{print $2}')
@@ -1483,6 +1542,12 @@ case "$key" in
     check_artifacts_exist
     check_schema_valid
     check_contract_fresh
+    # Parallel-safety advisory (non-blocking): warn if another active change owns the same files.
+    if [[ $_json -eq 0 && -f "$openspec_dir/check-conflicts.sh" ]]; then
+      if ! bash "$openspec_dir/check-conflicts.sh" "$openspec_dir/.." >/dev/null 2>&1; then
+        echo "  [guard] WARNING: file overlap with another active change - run 'bash openspec/check-conflicts.sh' (serialize or use a worktree)" >&2
+      fi
+    fi
     ;;
   applying:verifying)
     [[ $_json -eq 0 ]] && echo "  [guard] applying -> verifying"
@@ -1523,6 +1588,129 @@ echo "  [guard] All checks passed."
 exit 0
 __LF_GUARD__
   chmod +x openspec/guard.sh 2>/dev/null || true
+
+  cat <<'__LF_CONFLICTS__' | write_if_absent openspec/check-conflicts.sh
+#!/usr/bin/env bash
+# check-conflicts.sh - File-ownership overlap check between active changes (parallel-safety).
+# Usage: bash openspec/check-conflicts.sh [project-dir]
+# Exit: 0 = no overlap (parallel-safe); 1 = overlap detected; 2 = error.
+#
+# File declarations per change (in priority order):
+#   1. openspec/changes/<name>/files.yaml  - explicit, one path per line
+#      (YAML list form "- path" or bare "path"; # comments allowed). RECOMMENDED.
+#   2. Fallback: path-like tokens extracted from tasks.md + execution-contract.md.
+#
+# Parallel rule: no overlap -> changes are parallel-safe (per-change loop-state.yaml,
+# serial archive only). Overlap -> serialize the changes or use separate git worktrees.
+set -uo pipefail
+
+proj="${1:-.}"
+abs_proj="$(cd "$proj" 2>/dev/null && pwd)" || { echo "Error: not a directory: $proj" >&2; exit 2; }
+changes_dir="$abs_proj/openspec/changes"
+[[ -d "$changes_dir" ]] || { echo "Error: openspec/changes/ not found (run scaffold.sh first)" >&2; exit 2; }
+
+tmpdir="$(mktemp -d)" || exit 2
+trap 'rm -rf "$tmpdir"' EXIT
+
+_names=()
+_idx=0
+
+# Normalize tokens and drop noise + the change's own artifact paths.
+_clean() {
+  sed -e 's#^\./##' -e 's#^/##' -e 's#/$##' \
+    | grep -vE '^openspec/changes/archive/' \
+    | grep -vE '^openspec/changes/_template/' \
+    | grep -vE '^openspec/archive/' \
+    | grep -vE '^openspec/changes/'"$1"'/' \
+    | grep -vE '^https?' \
+    | grep -vE '^(proposal|design|tasks|execution-contract|verify|debt|spec)\.md$' \
+    | awk '{ lines[NR] = $0 }
+      END {
+        for (i = 1; i <= NR; i++) {
+          l = lines[i]
+          if (l !~ /\//) {
+            esc = l; gsub(/[.]/, "\\.", esc)
+            dup = 0
+            for (j = 1; j <= NR; j++)
+              if (lines[j] ~ ("/" esc "$")) { dup = 1; break }
+            if (!dup) print l
+          } else print l
+        }
+      }' \
+    | sort -u
+}
+
+collect() {
+  local d="$1" name="$2" raw="$tmpdir/raw.$_idx.txt"
+  : > "$raw"
+  if [[ -f "$d/files.yaml" ]]; then
+    grep -vE '^[[:space:]]*(#|$)' "$d/files.yaml" \
+      | sed -e 's/^[[:space:]]*-[[:space:]]*//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' >> "$raw"
+  fi
+  local src
+  for src in "$d/tasks.md" "$d/execution-contract.md"; do
+    [[ -f "$src" ]] || continue
+    { grep -oE '([A-Za-z0-9_.@-]+/)+[A-Za-z0-9_.@-]+' "$src" || true
+      grep -oE '[A-Za-z0-9_-]+\.(md|ts|tsx|js|jsx|vue|py|java|kt|go|rs|rb|php|c|h|cpp|hpp|cs|swift|sql|yml|yaml|json|xml|sh|scss|css|html|wxml|wxss)' "$src" || true
+    } >> "$raw"
+  done
+  _clean "$name" < "$raw" > "$tmpdir/files.$_idx.txt"
+  if [[ -s "$tmpdir/files.$_idx.txt" ]]; then
+    _names+=("$name")
+    _idx=$((_idx+1))
+  fi
+}
+
+for d in "$changes_dir"/*/; do
+  [[ -d "$d" ]] || continue
+  name="$(basename "$d")"
+  [[ "$name" == "_template" || "$name" == "archive" ]] && continue
+  collect "$d" "$name"
+done
+
+if [[ $_idx -eq 0 ]]; then
+  echo "No active changes with file declarations - nothing to check."
+  echo "Tip: add openspec/changes/<name>/files.yaml (one path per line) for reliable ownership checks."
+  exit 0
+fi
+
+echo "Active changes with file declarations: $_idx"
+echo ""
+echo "Per-change file ownership:"
+i=0
+while [[ $i -lt $_idx ]]; do
+  echo "  ${_names[$i]}:"
+  sed 's/^/    /' "$tmpdir/files.$i.txt"
+  i=$((i+1))
+done
+
+conflicts=0
+i=0
+while [[ $i -lt $_idx ]]; do
+  j=$((i+1))
+  while [[ $j -lt $_idx ]]; do
+    overlap="$(comm -12 "$tmpdir/files.$i.txt" "$tmpdir/files.$j.txt")"
+    if [[ -n "$overlap" ]]; then
+      conflicts=1
+      echo ""
+      echo "[CONFLICT] ${_names[$i]} <-> ${_names[$j]}"
+      printf '%s\n' "$overlap" | sed 's/^/    /'
+    fi
+    j=$((j+1))
+  done
+  i=$((i+1))
+done
+
+echo ""
+if [[ $conflicts -eq 1 ]]; then
+  echo "Result: OVERLAP detected - serialize these changes or use separate git worktrees."
+  exit 1
+else
+  echo "Result: no file overlap - changes are parallel-safe (archive serially)."
+  exit 0
+fi
+__LF_CONFLICTS__
+  chmod +x openspec/check-conflicts.sh 2>/dev/null || true
 
 
   # ---------- SDD: subagent-driven development templates (platform-agnostic) ----------
@@ -1958,7 +2146,7 @@ __COORD_TPL__
     echo "- TDD - Superpowers discipline enforced (red → green → refactor)"
     echo "- No cross-domain - each agent writes only its own stack"
     echo "- Dangerous ops (\`rm -rf\`, \`git push --force\`, \`git reset --hard\`) gated by Codex sandbox/approval"
-        echo "- Chinese proposal intro - do NOT auto-generate. Write \`docs/proposals/<name>.zh.md\` only on explicit user request for a stakeholder summary: <=20 lines covering problem, approved approach, impact, deployment order, and authoritative links; never duplicate implementation details. \`openspec/\` English stays source of truth."
+    echo "- Chinese proposal intro - do NOT auto-generate. Write \`docs/proposals/<name>.zh.md\` only on explicit user request for a stakeholder summary: <=20 lines covering problem, approved approach, impact, deployment order, and authoritative links; never duplicate implementation details. \`openspec/\` English stays source of truth."
     echo ""
     echo "### Session Continuity"
     echo "Codex: goal + plan tracking and session history keep context across turns."
@@ -2475,6 +2663,7 @@ cmd_doctor() {
   [[ -f "$proj/openspec/guard.sh" ]] && _dr_ok "guard.sh (phase gate)" || _dr_warn "guard.sh missing (re-run scaffold.sh)"
   [[ -f "$proj/openspec/loop-state.yaml" ]] && _dr_ok "loop-state.yaml (state machine)" || _dr_warn "loop-state.yaml missing"
   [[ -f "$proj/openspec/ensure-branch.sh" ]] && _dr_ok "ensure-branch.sh (worktree isolation)" || _dr_warn "ensure-branch.sh missing"
+  [[ -f "$proj/openspec/check-conflicts.sh" ]] && _dr_ok "check-conflicts.sh (parallel file-ownership check)" || _dr_warn "check-conflicts.sh missing"
   [[ -f "$proj/openspec/ensure-contract-fresh.sh" ]] && _dr_ok "ensure-contract-fresh.sh (contract freshness)" || _dr_warn "ensure-contract-fresh.sh missing"
   [[ -f "$proj/openspec/build-contract.sh" ]] && _dr_ok "build-contract.sh (contract auto-generation)" || _dr_warn "build-contract.sh missing (re-run scaffold.sh)"
   [[ -f "$proj/openspec/validate-artifacts.py" ]] && _dr_ok "validate-artifacts.py (schema validation)" || _dr_warn "validate-artifacts.py missing"
@@ -2673,6 +2862,21 @@ cmd_restructure() {
   echo "  See SKILL.md 'Mode: Restructure' Phase 1-5 for detailed extraction rules."
 }
 
+cmd_conflicts() {
+  [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]] && { echo "Usage: scaffold.sh conflicts [project-dir]  # file-ownership overlap check between active changes (parallel-safety)"; exit 0; }
+  local proj="${1:-.}"
+  local abs_dir
+  abs_dir="$(cd "$proj" 2>/dev/null && pwd)" || { echo "Error: not a directory: $proj" >&2; exit 1; }
+  local script=""
+  local cur="$abs_dir"
+  while [[ "$cur" != "/" && -z "$script" ]]; do
+    [[ -f "$cur/openspec/check-conflicts.sh" ]] && script="$cur/openspec/check-conflicts.sh"
+    cur="$(dirname "$cur")"
+  done
+  [[ -z "$script" ]] && { echo "Error: openspec/check-conflicts.sh not found. Run scaffold.sh (upgraded version) first to generate it." >&2; exit 2; }
+  bash "$script" "$abs_dir"
+}
+
 # ---------------- dispatch ----------------
 _subcmd="scaffold"
 case "${1:-}" in
@@ -2681,6 +2885,7 @@ case "${1:-}" in
   tokens|--tokens)                       _subcmd="tokens"; shift;;
   validate|--validate)                   _subcmd="validate"; shift;;
   changes|--changes)                     _subcmd="changes"; shift;;
+  conflicts|--conflicts)                _subcmd="conflicts"; shift;;
   doctor|--doctor)                       _subcmd="doctor"; shift;;
   version|--version|-V)                  _subcmd="version"; shift;;
   contract|--contract)                  _subcmd="contract"; shift;;
@@ -2692,6 +2897,7 @@ case "$_subcmd" in
   tokens) cmd_tokens "$@"; exit 0;;
   validate) cmd_validate "$@"; exit 0;;
   changes) cmd_changes "$@"; exit 0;;
+  conflicts) cmd_conflicts "$@"; exit 0;;
   doctor)  cmd_doctor  "$@"; exit 0;;
   version)     cmd_version     "$@"; exit 0;;
   contract)    cmd_contract    "$@"; exit 0;;
