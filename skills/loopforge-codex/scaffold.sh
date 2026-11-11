@@ -1615,14 +1615,15 @@ trap 'rm -rf "$tmpdir"' EXIT
 _names=()
 _idx=0
 
-# Normalize tokens and drop noise + the change's own artifact paths.
+# Normalize heuristic tokens and drop noise + the change's own artifact paths.
 _clean() {
-  sed -e 's#^\./##' -e 's#^/##' -e 's#/$##' \
-    | grep -vE '^openspec/changes/archive/' \
-    | grep -vE '^openspec/changes/_template/' \
-    | grep -vE '^openspec/archive/' \
-    | grep -vE '^openspec/changes/'"$1"'/' \
+  sed -e 's#^\./##' -e 's#^/##' -e 's#\.\./##g' -e 's#/$##' \
+    -e 's#[^A-Za-z0-9_./-]*$##' \
+    | grep -vE '(^|/)\.' \
+    | grep -vE '^openspec/' \
+    | grep -vE 'coordination/' \
     | grep -vE '^https?' \
+    | grep -vE '^@' \
     | grep -vE '^(proposal|design|tasks|execution-contract|verify|debt|spec)\.md$' \
     | awk '{ lines[NR] = $0 }
       END {
@@ -1640,21 +1641,64 @@ _clean() {
     | sort -u
 }
 
+# Known workflow/coordination doc basenames are prose references, not code targets.
+_drop_basenames="$tmpdir/drop.txt"
+: > "$_drop_basenames"
+printf '%s\n' guard.sh build-contract.sh ensure-contract-fresh.sh ensure-branch.sh \
+  check-conflicts.sh validate-artifacts.py loop-state.yaml verify.config.yaml \
+  token-baseline.json project.md config.yaml verify-result.template.md \
+  _template.md README.md >> "$_drop_basenames"
+if [[ -d "$abs_proj/openspec/coordination" ]]; then
+  find "$abs_proj/openspec/coordination" -type f -exec basename {} \; >> "$_drop_basenames"
+fi
+sort -u "$_drop_basenames" -o "$_drop_basenames"
+
+# Heuristic-only plausibility filter (files.yaml entries bypass this):
+# - bare tokens without any extension are dropped ("mvnw" from "./mvnw", prose words)
+# - extensionless slashed tokens must be real project paths (exist at project root
+#   or start with an existing top-level dir) - drops prose like "red/green",
+#   "uid/account", "10/11", "api/v1/..."
+# - slashed tokens whose last segment has an extension are kept (may be
+#   stack-relative paths like pages/system/logs/index.tsx)
+# - bare tokens with an extension are kept (stack-relative filenames)
+# - workflow/coordination basenames are dropped (prose references, shared by design)
+_filter_exists() {
+  local tok first last base
+  while IFS= read -r tok; do
+    [[ -n "$tok" ]] || continue
+    [[ "$tok" == *.* || "$tok" == */* ]] || continue
+    base="${tok##*/}"
+    grep -qxF "$base" "$_drop_basenames" && continue
+    if [[ "$tok" == */* ]]; then
+      last="${tok##*/}"
+      if [[ "$last" != *.* ]]; then
+        first="${tok%%/*}"
+        [[ -e "$abs_proj/$tok" || -e "$abs_proj/$first" ]] || continue
+      fi
+    fi
+    printf '%s\n' "$tok"
+  done
+}
+
 collect() {
   local d="$1" name="$2" raw="$tmpdir/raw.$_idx.txt"
   : > "$raw"
+  # Explicit declarations are trusted verbatim.
   if [[ -f "$d/files.yaml" ]]; then
     grep -vE '^[[:space:]]*(#|$)' "$d/files.yaml" \
-      | sed -e 's/^[[:space:]]*-[[:space:]]*//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' >> "$raw"
+      | sed -e 's/^[[:space:]]*-[[:space:]]*//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' \
+      | grep -vE '^$' >> "$tmpdir/files.$_idx.txt"
   fi
   local src
   for src in "$d/tasks.md" "$d/execution-contract.md"; do
     [[ -f "$src" ]] || continue
-    { grep -oE '([A-Za-z0-9_.@-]+/)+[A-Za-z0-9_.@-]+' "$src" || true
-      grep -oE '[A-Za-z0-9_-]+\.(md|ts|tsx|js|jsx|vue|py|java|kt|go|rs|rb|php|c|h|cpp|hpp|cs|swift|sql|yml|yaml|json|xml|sh|scss|css|html|wxml|wxss)' "$src" || true
+    { grep -oE '([A-Za-z0-9_.@-]+/)+[A-Za-z0-9_.@-]+([^A-Za-z0-9_@./-]|$)' "$src" || true
+      grep -oE '[A-Za-z0-9_-]+\.(md|ts|tsx|js|jsx|vue|py|java|kt|go|rs|rb|php|c|h|cpp|hpp|cs|swift|sql|yml|yaml|json|xml|sh|scss|css|html|wxml|wxss)([^A-Za-z0-9_.-]|$)' "$src" || true
     } >> "$raw"
   done
-  _clean "$name" < "$raw" > "$tmpdir/files.$_idx.txt"
+  # Heuristic tokens: normalize aggressively, then keep only plausible paths.
+  _clean "$name" < "$raw" | _filter_exists >> "$tmpdir/files.$_idx.txt"
+  sort -u "$tmpdir/files.$_idx.txt" -o "$tmpdir/files.$_idx.txt"
   if [[ -s "$tmpdir/files.$_idx.txt" ]]; then
     _names+=("$name")
     _idx=$((_idx+1))
