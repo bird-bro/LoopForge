@@ -402,6 +402,16 @@ For each task batch (from execution-contract.md):
 
 ### Frontend-Backend Subagent Coordination
 
+### Small cross-stack changes (bypass)
+
+If ALL of the following are true, skip the full coordination flow:
+- No new API contract, no new data model, no schema change
+- <=2 files per stack AND <=5 lines of meaningful change per file → **Direct change** (run tests, no proposal)
+- <=3 files per stack AND no new API contract → **Single lightweight proposal** (one change in the primary stack; mention the other stack's files in Scope; no coordination doc)
+
+Otherwise (new contract/model, multi-file, or new feature) → use the full coordination flow below.
+Cross-domain ban unchanged: each agent still writes only its own stack's code.
+
 For cross-stack features (e.g. frontend + backend), SDD works alongside the multi-stack
 coordination layer:
 

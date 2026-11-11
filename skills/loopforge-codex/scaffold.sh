@@ -2076,6 +2076,16 @@ EOF
 > LoopForge-managed replacement for the "parent" that tracks a cross-stack feature across
 > per-stack changes. It is plain documentation - the openspec CLI does not parse it.
 
+## Small cross-stack changes (bypass)
+
+If ALL of the following are true, skip the full coordination flow:
+- No new API contract, no new data model, no schema change
+- <=2 files per stack AND <=5 lines of meaningful change per file -> **Direct change** (run tests, no proposal)
+- <=3 files per stack AND no new API contract -> **Single lightweight proposal** (one change in the primary stack; mention the other stack's files in Scope; no coordination doc)
+
+Otherwise (new contract/model, multi-file, or new feature) -> use the full coordination flow below.
+Cross-domain ban unchanged: each agent still writes only its own stack's code.
+
 ## How a cross-stack feature works
 1. **Create the parent** - copy `_template.md` to `<feature>.md`, fill the shared design/decisions.
 2. **Per stack** - in each stack run `openspec new change <name> --goal "<feature>"` (soft-tagged).
@@ -2197,6 +2207,8 @@ __COORD_TPL__
       echo "2. Per stack (parallel): \`openspec new change <name> --goal \"<feature>\"\` (soft-tagged to the feature)"
       echo "3. Implement each in its own stack (cross-domain ban unchanged; frontend mocks first - web only; mini-program may connect to real test backend); coordinate via the coordination doc \`design\`/\`decisions\`"
       echo "4. Gate: verify each stack independently; defer archive until ALL registered changes have verify.md overall = PASS, then batch-archive them"
+      echo "   Small cross-stack change (no new contract/model, <=2 files + <=5 lines per stack): direct change, no proposal."
+      echo "   Small cross-stack (<=3 files per stack, no new contract): single lightweight proposal in the primary stack, no coordination doc."
       echo "   Single-stack: skip coordination; plain \`openspec new change\`. Open all stacks: \`openspec workset open @@WS_NAME@@ --tool code\`."
     fi
     echo ""
