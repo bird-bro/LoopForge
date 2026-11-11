@@ -296,9 +296,9 @@ OpenSpec 1.15 默认 profile（core）只装 propose / explore / apply / update 
 | 阶段 | 用户输入 | AI 做 |
 |:--|:--|:--|
 | 提案 | `/opsx:propose <change>` | brainstorm 澄清 → 写 proposal + spec(WHEN/THEN) |
-| 设计 | (UI 开发时,`/opsx:apply` 前) | 先做 HTML 原型,两条路:① 纯代码优先 — 直接写 HTML/CSS(或 React+Tailwind/shadcn)→ `browser` 渲染 → `screenshot` 自检(简单页/快速原型最快);② `frontend-app-builder` skill — Claude 当资深前端设计师 → Image Gen 出视觉概念稿 → 用户确认 → 忠实实现成代码 → `browser` + `view_image` 对比到 10/10 还原(全程不碰 Figma)。主力栈:`build-web-apps`(`frontend-app-builder` + `shadcn-best-practices`)+ `browser` + `screenshot`;静态/单文件默认 HTML/CSS,复杂 app 才上 React+Vite |
-| 实现 | `/opsx:apply` | TDD:红→绿→重构,前后端跨域隔离、mock 优先 |
-| 验证 | `/opsx:verify` | 三层验证(L1 构建 / L2 spec 对齐 / L3 测试),写 `verify.md` 凭证 |
+| 设计 | (UI 开发时,`/opsx:apply` 前) | 先做 HTML 原型;默认**不自动截图**,用 DOM/测试/代码结构自检,再请用户打开或人工确认视觉。可选视觉概念工具(如 `frontend-app-builder`)仅在用户明确要求时使用,图片由用户确认,不要让模型自动看图。截图仅在用户明确要求且当前模型支持图片时执行;否则只给出预览路径/人工检查清单。静态/单文件默认 HTML/CSS,复杂 app 才上 React+Vite |
+| 实现 | `/opsx:apply` | TDD:红→绿→重构;前后端跨域隔离、mock 优先;只跑受影响测试;build/test 日志重定向到文件,报告只保留 exit code/计数/关键错误 |
+| 验证 | `/opsx:verify` | 三层验证(L1 构建 / L2 spec 对齐 / L3 测试),写紧凑英文 `verify.md` 凭证;不贴完整日志 |
 | 归档 | `/opsx:archive` | 检查 `verify.md` 门禁后移入 `openspec/changes/archive/` |
 
 会话保持:`/resume`、`/branch`、`/rewind`。
@@ -333,8 +333,8 @@ OpenSpec 1.15 默认 profile（core）只装 propose / explore / apply / update 
    openspec new change sev-task-detail-api --goal "task-flow"
    # proposal.md 实现前端声明的接口
    ```
-4. **各自实现**(跨域禁令不变;前端 mock 优先)-> 各自 `/opsx:verify` -> 各自 `/opsx:archive`
-5. **完成门禁**:在 `openspec/coordination/task-flow.md` 登记表里确认两个 change 都 verify PASS -> 功能才算完
+4. **各自实现**(跨域禁令不变;前端 mock 优先)-> 各自 `/opsx:verify`;把结果记入协调文档,但先不归档
+5. **统一归档门禁**:在 `openspec/coordination/task-flow.md` 登记表确认两个 change 的 `verify.md overall` 均为 `PASS`(或用户确认过的 `PASS_WITH_ISSUES`);协调者先预检所有凭证,再一次性执行归档;若用独立仓库/store,按各自 `--store` 执行
 
 > 协调会话(中立地,不写领域代码):`openspec workset open <项目> --tool code` 打开所有栈;agent 直接打开暂不可用,需手动在项目根启动 claude。
 > 跨栈的接口契约/设计决策放在 `openspec/coordination/task-flow.md` 的 `design`/`decisions` 里,双方共享。
@@ -385,7 +385,8 @@ OpenSpec 1.15 默认 profile（core）只装 propose / explore / apply / update 
   │     └─ 全部 verify PASS -> 功能才算完
   │
   └─ 5. 归档
-        各自 /opsx:archive -> 移入 openspec/changes/archive/
+        Coordinator 预检两个 verify.md 均为 overall: PASS
+        -> 一次性执行全部归档;独立仓库按各自 --store
 ```
 
 #### 接口契约共享

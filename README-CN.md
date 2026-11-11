@@ -41,6 +41,7 @@ LoopForge 围绕工业级三层范式 **OpenSpec + Superpowers + Harness**构建
 - **SDD(子代理驱动开发)**逐任务分派 implementer/reviewer 子代理,防止同时处理多项目时上下文膨胀
 - **编译门禁验证**通过 `openspec/verify.config.yaml`--本地 `/opsx:verify` 的 L1 构建检查确认每个栈编译通过后再 push;三层验证产出 `verify.md` 凭证作为归档门禁
 - **并行 per-change 工作流**(2.4.0)--每个 change 独立 `loop-state.yaml` + 可选 `files.yaml` 文件所有权声明 + `check-conflicts.sh` 冲突门禁,不同模块的变更可多会话并行,仅归档保持串行
+- **Token 效率纪律** -- 按需加载上下文;build/test 日志落盘并只回报 exit code/计数/关键错误;contract 与报告保持紧凑;apply 阶段优先跑受影响测试;UI 默认不自动截图
 
 ## 定位
 

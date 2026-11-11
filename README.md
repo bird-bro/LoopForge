@@ -41,6 +41,7 @@ Both editions scaffold, audit, and restructure a project's AI-collaboration stru
 - **SDD (Subagent-Driven Development)** to dispatch implementer/reviewer subagents per task, preventing context bloat when juggling multiple projects
 - **Compile-gated verification** via `openspec/verify.config.yaml` -- the local `/opsx:verify` L1 build check confirms each stack compiles before push. The three-layer verify produces a `verify.md` credential that gates archival
 - **Parallel per-change workflow** (2.4.0) -- per-change `loop-state.yaml` + optional `files.yaml` ownership declaration + `check-conflicts.sh` gate, so changes in disjoint modules run in parallel sessions; only archiving stays serial
+- **Token-efficiency discipline** -- targeted context loading, file-backed build/test logs with exit-code summaries, compact contracts/reports, affected-test-first runs, and no automatic UI screenshots
 
 ## Positioning
 

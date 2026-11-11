@@ -268,12 +268,14 @@ Three-layer verification for an OpenSpec change. Confirms the implementation act
 
 5. **L1 - Build check (per affected stack)**
 
-   For each affected stack, run its build command **inside that stack's `dir`**:
+   For each affected stack, run its build command **inside that stack's `dir`** and keep raw output out of the model context:
    ```bash
-   cd "<stack-dir>" && <build-cmd>
+   mkdir -p <changeRoot>/logs
+   cd "<stack-dir>" && <build-cmd> > <changeRoot>/logs/build-<stack-id>.log 2>&1; echo "exit=$?"
    ```
-   - Capture exit code and tail of output.
-   - Record `L1 = PASS` (exit 0) or `L1 = FAIL` (non-zero) with the failing output.
+   - On PASS, report only the command, exit code, and log path.
+   - On FAIL, inspect with `tail -n 50` / `grep -iE 'error|failed|exception'`; quote only the key lines, not the whole log.
+   - Record `L1 = PASS` (exit 0) or `L1 = FAIL` (non-zero).
    - If a stack has no build command, record `L1 = SKIP`.
 
 6. **L2 - Spec alignment (reviewer-style, agent-driven)**
@@ -297,12 +299,14 @@ Three-layer verification for an OpenSpec change. Confirms the implementation act
 
 7. **L3 - Test execution (per affected stack)**
 
-   For each affected stack with a non-null test command, run it inside that stack's `dir`:
+   For each affected stack with a non-null test command, run it inside that stack's `dir` and keep raw output out of the model context:
    ```bash
-   cd "<stack-dir>" && <test-cmd>
+   cd "<stack-dir>" && <test-cmd> > <changeRoot>/logs/test-<stack-id>.log 2>&1; echo "exit=$?"
    ```
-   - Record `L3 = PASS` (exit 0) with pass/fail counts, or `L3 = FAIL` with the failing test names.
-   - Stacks with `test: null` record `L3 = SKIP` (e.g., "仅 stack-a 有 Vitest，其他子项目报 SKIP").
+   - Prefer the smallest affected test set during task-level apply; this verify step may run the configured suite.
+   - On PASS, report pass/fail counts (if available), exit code, and log path.
+   - On FAIL, inspect with `tail -n 50` / `grep -iE 'FAIL|ERROR|AssertionError|failed'`; name only failing tests and quote key error lines.
+   - Stacks with `test: null` record `L3 = SKIP` (e.g., "only stack-a has Vitest; other stacks report SKIP").
 
 8. **Compute overall status**
 
@@ -334,29 +338,31 @@ Three-layer verification for an OpenSpec change. Confirms the implementation act
 
     Match the report format below. Then:
     - `FAIL` → list blocking issues, suggest `/opsx:apply <name>` to fix
-    - `PASS_WITH_ISSUES` → list PARTIALs, ask "要我修复吗?" → if yes, hand off to `/opsx:apply`
+    - `PASS_WITH_ISSUES` → list PARTIALs, ask "Fix now?" → if yes, hand off to `/opsx:apply`
     - `PASS` → suggest `/opsx:archive <name>`
 
 **Output (report)**
 
+Keep this report compact: no raw logs, no full source excerpts, and cite evidence as `file:line`.
+
 ```
-## 验证结果: <change-name>
+## Verification: <change-name>
 
 ### <stack-id>
-| 层级 | 状态 | 详情 |
+| Layer | Status | Detail |
 |:---|:---|:---|
-| L1 构建 | ✓ PASS | <build-cmd> 成功 |
-| L2 规格对齐 | 5/6 已实现 | 1 PARTIAL |
-| L3 测试 | ✓ PASS | 4/4 测试通过 |
+| L1 build | PASS | <build-cmd>; exit=0; logs/build-<stack-id>.log |
+| L2 spec | 5/6 | 1 PARTIAL |
+| L3 tests | PASS | <test-cmd>; exit=0; logs/test-<stack-id>.log |
 
-### 场景对齐详情
-| 场景 | 状态 | 证据 |
+### Scenario alignment
+| Scenario | Status | Evidence |
 |:---|:---|:---|
-| 提交报修单 | ✓ 已实现 | repair.vue:42-58 |
-| 提交后刷新列表 | ⚠ PARTIAL | 缺少刷新逻辑 |
+| Submit repair request | IMPLEMENTED | repair.vue:42-58 |
+| Refresh list after submit | PARTIAL | missing refresh call |
 
-总体: PASS_WITH_ISSUES
-要我修复那个 PARTIAL 吗?
+Overall: PASS_WITH_ISSUES
+Fix the PARTIAL now?
 ```
 
 **Guardrails**
@@ -446,8 +452,8 @@ EOF
 
   cat <<'__LOOPFORGE_VERIFY_TPL__' | write_if_absent openspec/verify-result.template.md
 <!--
-  Written by the verify step. This file is the archive credential - `openspec archive`
-  parses the `overall` field below. Do not hand-edit; re-run verify to refresh.
+  Written by the verify step. This is the archive credential. Archive parses `overall`.
+  Do not hand-edit; re-run verify to refresh. Keep it compact: no raw logs or source excerpts.
 -->
 ---
 verify:
@@ -461,37 +467,32 @@ verify:
       L3: PASS                 # PASS | FAIL | SKIP
 ---
 
-# 验证结果: CHANGE_NAME
+# Verification: CHANGE_NAME
 
-> 生成时间: YYYY-MM-DD · 总体: **PASS_WITH_ISSUES**
+Overall: **PASS_WITH_ISSUES**
 
-## STACK_ID
+## Stack Summary
 
-| 层级 | 状态 | 详情 |
-|:---|:---|:---|
-| L1 构建 | ✓ PASS | <build-cmd> 成功 |
-| L2 规格对齐 | 5/6 已实现 | 1 PARTIAL |
-| L3 测试 | ✓ PASS | 4/4 测试通过 |
+| Stack | L1 Build | L2 Spec | L3 Tests | Log |
+|:--|:--|:--|:--|:--|
+| STACK_ID | PASS | 5/6 | PASS | logs/build-STACK_ID.log |
 
-## 场景对齐详情
+## Scenario Alignment
 
-| 场景 | 状态 | 证据 |
-|:---|:---|:---|
-| 提交报修单 | ✓ 已实现 | repair.vue:42-58 |
-| 提交后刷新列表 | ⚠ PARTIAL | 缺少刷新逻辑 |
+| Scenario | Status | Evidence |
+|:--|:--|:--|
+| Example scenario | IMPLEMENTED | file:line |
+| Example edge case | PARTIAL | missing validation |
 
-## 发现的问题
+## Issues
 
-⚠ PARTIAL: "提交后刷新列表"
-- 期望: 提交报修单后列表自动刷新
-- 实际: repair.vue 提交成功后未调用列表刷新
-- 建议: 提交回调中 emit 事件或调用 store.refresh()
+- PARTIAL: "Example edge case" - expected X; found Y - fix in file:line.
 
-## 下一步
+## Next
 
-- PASS → `openspec archive CHANGE_NAME`
-- PASS_WITH_ISSUES → 确认后归档，或修复 PARTIAL 后重新验证
-- FAIL → 修复阻断项后重新验证
+- PASS -> archive CHANGE_NAME.
+- PASS_WITH_ISSUES -> fix or obtain explicit user confirmation before archive.
+- FAIL -> return to apply, fix blockers, then re-run verify.
 __LOOPFORGE_VERIFY_TPL__
 
   # ---------- MOD-2': worktree isolation gate (ported from spec-superflow ensure-branch.mjs) ----------
@@ -1302,46 +1303,55 @@ what=""
 scope_raw=""
 constraints=""
 if [[ -f "$dir/proposal.md" ]]; then
-  why=$(extract_h2 "$dir/proposal.md" "Why")
-  what=$(extract_h2 "$dir/proposal.md" "What")
-  scope_raw=$(extract_h2 "$dir/proposal.md" "Scope")
-  constraints=$(extract_h2 "$dir/proposal.md" "Constraints")
+  why=$(extract_h2 "$dir/proposal.md" "Why" | head -n 8)
+  what=$(extract_h2 "$dir/proposal.md" "What" | head -n 12)
+  scope_raw=$(extract_h2 "$dir/proposal.md" "Scope" | head -n 20)
+  constraints=$(extract_h2 "$dir/proposal.md" "Constraints" | head -n 15)
 fi
 
-# --- extract verification scenarios from specs/ or spec.md ---
+# --- compact scenario index: headings + line refs, not full WHEN/THEN text ---
 specs_content=""
 if [[ -d "$dir/specs" ]]; then
   while IFS= read -r sf; do
     [[ -f "$sf" ]] || continue
-    local_specs=$(extract_h2 "$sf" "Verification Scenarios")
-    [[ -n "$local_specs" ]] && specs_content+="### $(basename "$(dirname "$sf")")" && specs_content+=$'\n'"$local_specs"$'\n\n'
+    rel="${sf#"$dir"/}"
+    idx=$(grep -nE '^### |^#### Scenario:' "$sf" | head -n 30 || true)
+    [[ -n "$idx" ]] && specs_content+="- \`$rel\`"$'\n'"$idx"$'\n'
   done < <(find "$dir/specs" -name "spec.md" | sort)
 fi
 if [[ -z "$specs_content" && -f "$dir/spec.md" ]]; then
-  specs_content=$(extract_h2 "$dir/spec.md" "Verification Scenarios")
+  specs_content=$(grep -nE '^### |^#### Scenario:' "$dir/spec.md" | head -n 30 || true)
 fi
-[[ -z "$specs_content" ]] && specs_content="<!-- AI: no verification scenarios found in specs/ - add them -->"
+[[ -z "$specs_content" ]] && specs_content="<!-- AI: no verification scenario headings found in specs/ - add them -->"
 
 # --- extract from design.md ---
 design_decisions=""
 if [[ -f "$dir/design.md" ]]; then
-  design_decisions=$(extract_h2 "$dir/design.md" "Decisions")
-  [[ -z "$design_decisions" ]] && design_decisions=$(extract_h2 "$dir/design.md" "Architecture")
+  design_decisions=$(extract_h2 "$dir/design.md" "Decisions" | head -n 12)
+  [[ -z "$design_decisions" ]] && design_decisions=$(extract_h2 "$dir/design.md" "Architecture" | head -n 12)
 fi
 
-# --- extract tasks from tasks.md ---
+# --- compact task index: task headings only, not full task bodies ---
 tasks_raw="<!-- AI: no tasks.md found - create it first -->"
 if [[ -f "$dir/tasks.md" ]]; then
-  tasks_raw=$(cat "$dir/tasks.md")
+  tasks_raw=$(grep -nE '^[[:space:]]*[-*][[:space:]]+\[[ xX]\][[:space:]]+|^[[:space:]]*[0-9]+[.)][[:space:]]+' "$dir/tasks.md" | head -n 50 || true)
+  [[ -z "$tasks_raw" ]] && tasks_raw="<!-- AI: tasks.md exists but no checkbox/numbered task lines found -->"
 fi
 
 # --- assemble contract ---
 {
   echo "# Execution Contract"
   echo ""
-  echo "> Auto-generated by build-contract.sh from planning artifacts."
-  echo "> Review and refine AI-marked sections before applying."
-  echo "> guard.sh enforces: proposing->applying transition checks contract existence + freshness."
+  echo "> Auto-generated compact bridge from planning artifacts."
+  echo "> Do not duplicate full proposal/spec/design/tasks content here; cite source paths and line refs."
+  echo "> Review AI-marked sections before applying. guard.sh checks contract existence + freshness."
+  echo ""
+  echo "## Source Map"
+  echo ""
+  echo "- Proposal: \`proposal.md\`"
+  if [[ -d "$dir/specs" ]]; then echo "- Specs: \`specs/*/spec.md\`"; elif [[ -f "$dir/spec.md" ]]; then echo "- Spec: \`spec.md\`"; fi
+  [[ -f "$dir/design.md" ]] && echo "- Design: \`design.md\`"
+  [[ -f "$dir/tasks.md" ]] && echo "- Tasks: \`tasks.md\`"
   echo ""
   echo "## Intent Lock"
   echo ""
@@ -1774,21 +1784,22 @@ Subagent:
     You are implementing Task N: [task name]
 
     ## Task Description
-    Read your task brief first: [BRIEF_FILE or tasks.md task N]
-    It contains the full task text from the plan.
+    Read only the compact task brief: [BRIEF_FILE or tasks.md task N].
+    Do not load the whole execution contract, whole tasks.md, or unrelated specs unless a
+    dependency explicitly requires it.
 
     ## Context
     [Where this fits in the execution-contract.md batch plan.
      Dependencies on prior tasks. Architectural context from design.md.]
 
     ## Before You Begin
-    If you have questions about requirements, approach, dependencies, or anything unclear:
-    Ask them now. Raise concerns before starting work.
+    If requirements, dependencies, or risks are unclear, ask all clarifying questions in ONE
+    batch (maximum 3) before starting work. Do not ask serial one-off questions.
 
     ## Your Job
     1. Implement exactly what the task specifies - nothing more (YAGNI)
     2. Write tests following TDD (RED -> GREEN -> REFACTOR) or characterization mode
-    3. Verify implementation works (run tests)
+    3. Verify with the smallest affected tests; do not run the full suite for every task
     4. Commit your work
     5. Self-review (see below)
     6. Report back
@@ -1813,10 +1824,16 @@ Subagent:
     - Discipline: did I avoid overbuilding? follow existing patterns?
     - Testing: do tests verify real behavior? is TDD evidence present?
 
+    ## Token Discipline
+    - Redirect build/test output to a log file; do not paste whole logs into the report.
+    - In the report, record command + exit code + pass/fail count; on failure quote only key lines.
+    - Do not paste full files or large diffs. Use `file:line` references.
+    - Keep [REPORT_FILE] under 80 lines.
+
     ## Report Format
     Write your report to [REPORT_FILE]:
     - What you implemented
-    - TDD Evidence: RED (command + failing output) + GREEN (command + passing output)
+    - TDD evidence: RED command + exit/summary, GREEN command + exit/summary
     - Files changed
     - Self-review findings
     - Issues or concerns
@@ -1851,7 +1868,10 @@ Subagent:
     - Spec: [SPEC_FILE or specs/ path]
     - Execution contract: openspec/changes/[change]/execution-contract.md
 
-    Review the diff (git diff [BASE_SHA]..[HEAD_SHA]) against the spec.
+    Review only the affected diff:
+    1. `git diff --stat [BASE_SHA]..[HEAD_SHA]`
+    2. `git diff [BASE_SHA]..[HEAD_SHA] -- <affected paths>`
+    Do not read full unrelated files or paste full diffs. Cite `file:line`.
 
     ## Part 1: Spec Compliance
     Compare the diff against what was requested:
@@ -1876,20 +1896,14 @@ Subagent:
     - Minor: nice to have (polish, coverage could be broader)
 
     ## Output Format
-    ### Spec Compliance
-    - Compliant | Issues found: [what, with file:line]
+    Keep the review under 30 lines. Do not include empty headings or generic praise.
 
-    ### Strengths
-    [What was done well? Be specific.]
-
-    ### Issues
-    #### Critical (Must Fix)
-    #### Important (Should Fix)
-    #### Minor (Nice to Have)
-
-    ### Assessment
-    Task quality: Approved | Needs fixes
-    Reasoning: [1-2 sentence technical assessment]
+    Spec compliance: Compliant | Issues found
+    Issues:
+    - Critical: [what, with file:line]
+    - Important: [what, with file:line]
+    - Minor: [what, with file:line]
+    Assessment: Approved | Needs fixes - [1 sentence]
 ```
 
 Placeholders: [task name], [REPORT_FILE], [BASE_SHA], [HEAD_SHA], [SPEC_FILE], [MODEL]
@@ -1952,8 +1966,8 @@ You are a **$label**. Your scope: server-side logic, APIs, data access, business
 - **Database**: [e.g. MySQL 8]
 
 ## Before You Code
-1. Read \`../openspec/specs/api/spec.md\` (authoritative contract)
-2. Read \`../openspec/specs/data/spec.md\` and \`../openspec/specs/errors/spec.md\`
+1. Read only the relevant sections of \`../openspec/specs/api/spec.md\` (authoritative contract)
+2. Read only relevant data/error sections from \`../openspec/specs/data/spec.md\` and \`../openspec/specs/errors/spec.md\`
 3. Check \`../openspec/changes/\` for active proposals
 4. If no spec exists, run \`openspec new change <name>\` first - never code without a spec
 
@@ -1998,15 +2012,15 @@ You are a **$label**. Your scope: UI, components, state, API integration.
 - **Stack**: [e.g. Vue 3 + Vite + Element Plus (web) / Vant (mobile)]
 
 ## Before You Code
-1. Read \`../openspec/specs/api/spec.md\` - mock from it (any mock tool), do not invent endpoints
-2. Read \`../openspec/specs/errors/spec.md\` - handle every error code
+1. Read only relevant sections of \`../openspec/specs/api/spec.md\` - mock from it (any mock tool), do not invent endpoints
+2. Read only relevant error-code sections of \`../openspec/specs/errors/spec.md\`
 3. Check \`../openspec/changes/\` for active proposals
 4. If no spec exists, run \`openspec new change <name>\` first - never code without a spec
 
 ## Mock-First
 - Mock APIs from \`../openspec/specs/api/spec.md\` (any mock tool: MSW / mockjs / vite-plugin-mock / etc.)
 - **Mini-program exception** (WeChat/Alipay/etc.): delivery chain (dev tools -> real device -> review -> online) makes mock low-ROI; direct connection to a real test backend is valid. Skip mock, wire real API calls early to surface openid/domain/real-device issues.
-- UI prototype (new pages only; existing-page edits skip) → **user confirms** → then implement (openspec-driven)
+- UI prototype (new pages only; existing-page edits skip) → text/DOM checks, then **user confirms** visuals → implement. No automatic screenshots; request one only when the user asks and the model supports images.
 
 ## Module Structure
 [Describe frontend module/layout]
@@ -2088,7 +2102,8 @@ __COORD_README__
 [Business reason for the cross-stack feature]
 
 ## Shared Design
-[API contracts / data model / error codes negotiated across stacks - single source of truth]
+[API contracts / data model / error codes negotiated across stacks - single source of truth.
+Do NOT duplicate these details in per-stack proposals; per-stack artifacts reference this file.]
 
 ## Decisions
 - [Decision] - [rationale] - [date]
@@ -2100,7 +2115,8 @@ __COORD_README__
 | frontend | [change name] | proposing | - |
 
 ## Gate
-Feature done = ALL registered changes verify PASS -> archive each.
+Verify each stack independently. When ALL registered changes have an acceptable verify credential
+(`PASS`, or user-confirmed `PASS_WITH_ISSUES`), preflight all credentials and batch-archive them.
 __COORD_TPL__
       # Workset grouping all stack code dirs (no --tool: agent open is unavailable; create saves cleanly).
       # OpenSpec requires kebab-case workset names; convert PROJECT_NAME accordingly.
@@ -2165,7 +2181,7 @@ __COORD_TPL__
     echo "1. Propose: \`openspec new change <name>\` → fill \`proposal.md\` + \`specs/<capability>/spec.md\` (## ADDED Requirements + WHEN/THEN); brainstorm/clarify first"
     if has backend && (has frontend || has frontend-mobile); then
       echo "2. Backend Agent: \`cd @@BACKEND_DIR@@\` → launch AI (codex/claude) → implement to spec (TDD)"
-      echo "3. Frontend Agent (parallel): \`cd @@FRONTEND_DIR@@\` → launch AI → mock from spec → UI prototype (new pages only; existing-page edits skip) → **user confirms** → implement"
+      echo "3. Frontend Agent (parallel): \`cd @@FRONTEND_DIR@@\` → launch AI → mock from spec → UI prototype (new pages only; existing-page edits skip) → text/DOM checks; **no automatic screenshots**; user confirms visuals → implement"
       echo "4. Verify: L1 build + L2 \`openspec validate <name>\` + L3 tests → write \`verify.md\`"
       echo "5. Archive: \`openspec archive <name>\` when \`verify.md\` overall = PASS"
     else
@@ -2180,17 +2196,24 @@ __COORD_TPL__
       echo "1. Parent: create \`openspec/coordination/<feature>.md\` (shared design/decisions + change registry)"
       echo "2. Per stack (parallel): \`openspec new change <name> --goal \"<feature>\"\` (soft-tagged to the feature)"
       echo "3. Implement each in its own stack (cross-domain ban unchanged; frontend mocks first - web only; mini-program may connect to real test backend); coordinate via the coordination doc \`design\`/\`decisions\`"
-      echo "4. Gate: feature done = ALL registered changes verify PASS (\`openspec/verify.config.yaml\`) -> archive each"
+      echo "4. Gate: verify each stack independently; defer archive until ALL registered changes have verify.md overall = PASS, then batch-archive them"
       echo "   Single-stack: skip coordination; plain \`openspec new change\`. Open all stacks: \`openspec workset open @@WS_NAME@@ --tool code\`."
     fi
     echo ""
     echo "### AI Coding Rules"
     echo "- Spec first - read \`openspec/specs/\` before writing code"
-    if has frontend || has frontend-mobile; then echo "- UI prototype first (new pages only) - confirm with user before implementing; existing-page edits skip the prototype"; fi
+    if has frontend || has frontend-mobile; then echo "- UI prototype first (new pages only) - validate with text/DOM checks and confirm visuals with the user; no automatic screenshots (screenshots only on explicit user request and if the model supports images); existing-page edits skip the prototype"; fi
     echo "- TDD - Superpowers discipline enforced (red → green → refactor)"
     echo "- No cross-domain - each agent writes only its own stack"
     echo "- Dangerous ops (\`rm -rf\`, \`git push --force\`, \`git reset --hard\`) gated by Codex sandbox/approval"
     echo "- Chinese proposal intro - do NOT auto-generate. Write \`docs/proposals/<name>.zh.md\` only on explicit user request for a stakeholder summary: <=20 lines covering problem, approved approach, impact, deployment order, and authoritative links; never duplicate implementation details. \`openspec/\` English stays source of truth."
+    echo ""
+    echo "### Token Discipline"
+    echo "- Read only the current change, affected stack guidance, and relevant spec sections; use targeted search, not whole-repo scans."
+    echo "- Redirect build/test output to files; report exit code + counts + log path. Quote only key failure lines, never full logs."
+    echo "- During apply, run affected tests; run the configured suite during verify."
+    echo "- Ask clarifications in one batch (max 3); do not ask serial one-off questions."
+    echo "- On resume, read loop-state/progress/tasks first; do not re-read archives or unrelated changes."
     echo ""
     echo "### Session Continuity"
     echo "Codex: goal + plan tracking and session history keep context across turns."
