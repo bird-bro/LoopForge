@@ -2661,7 +2661,7 @@ cmd_changes() {
   for d in "$changes_dir"/*/; do
     [[ -d "$d" ]] || continue
     local name; name="$(basename "$d")"
-    [[ "$name" == "_template" ]] && continue
+    [[ "$name" == "_template" || "$name" == "archive" ]] && continue
     local state="$d/loop-state.yaml"
     [[ -f "$state" ]] || state="$proj/openspec/loop-state.yaml"
     local phase="?" tasks="?" updated="?"
