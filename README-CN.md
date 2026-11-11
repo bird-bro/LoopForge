@@ -40,6 +40,7 @@ LoopForge 围绕工业级三层范式 **OpenSpec + Superpowers + Harness**构建
 - **跨栈协调**(LoopForge coordination docs + workset + OpenSpec `--goal` tags)让一人团队也能编排前后端跨仓库变更
 - **SDD(子代理驱动开发)**逐任务分派 implementer/reviewer 子代理,防止同时处理多项目时上下文膨胀
 - **编译门禁验证**通过 `openspec/verify.config.yaml`--本地 `/opsx:verify` 的 L1 构建检查确认每个栈编译通过后再 push;三层验证产出 `verify.md` 凭证作为归档门禁
+- **并行 per-change 工作流**(2.4.0)--每个 change 独立 `loop-state.yaml` + 可选 `files.yaml` 文件所有权声明 + `check-conflicts.sh` 冲突门禁,不同模块的变更可多会话并行,仅归档保持串行
 
 ## 定位
 
@@ -137,7 +138,9 @@ myapp/
 │   ├── guard.sh              ← 相位门禁:proposing->applying->verifying->archived
 │   ├── ensure-branch.sh      ← Worktree 隔离(legacy git 容错)
 │   ├── ensure-contract-fresh.sh ← 执行契约新鲜度检查
-│   ├── loop-state.yaml       ← 相位状态机(phase/change/retry_count/execution_mode)
+│   ├── check-conflicts.sh    ← 活跃变更间的文件所有权重叠检查(并行安全门)
+│   ├── loop-state.yaml       ← 旧版共享状态机;per-change 状态在 changes/<name>/loop-state.yaml
+│   │                           changes/<name>/ 可选 files.yaml 声明文件所有权
 │   └── verify.config.yaml    ← 各栈 build/test 命令(供 /opsx:verify L1/L3 用)
 ├── .claude/  (CC 版)         ← HOW:settings.json(权限+钩子)、rules/、agents/{reviewer,coordinator,implementer}
 ├── .agents/  (Codex 版)      ← HOW:skills/openspec-*(propose/apply/verify/archive + trigger 注入;旧版 .codex/)
@@ -145,7 +148,7 @@ myapp/
 └── frontend-web/{CLAUDE,AGENTS}.md ← Frontend Agent(Claude Code / Codex)
 ```
 
-`CLAUDE.md` 与 `AGENTS.md` 总是一起生成(内容镜像),同一项目可在两种工具中使用。CC 版创建 `.claude/`;Codex 版创建 `.codex/` -- 各自只创建自己工具的目录,不交叉创建。非破坏性:已存在的文件会被跳过,可安全重跑。
+`CLAUDE.md` 与 `AGENTS.md` 总是一起生成(内容镜像),同一项目可在两种工具中使用。CC 版创建 `.claude/`;Codex 版创建 `.agents/`(旧版为 `.codex/`) -- 各自只创建自己工具的目录,不交叉创建。非破坏性:已存在的文件会被跳过,可安全重跑。
 
 ### 需另外安装的组件(按版本)
 
@@ -156,6 +159,27 @@ myapp/
 **Codex:** 无需额外安装 -- Superpowers 五步纪律已作为指令写进生成的 `AGENTS.md`,Loop 由 `openspec` CLI 驱动。
 
 随后填写 `openspec/README.md`(`## Project Overview`)、`openspec/specs/*` 及各栈 `CLAUDE.md` / `AGENTS.md` 中的 `[方括号]` 占位符。
+
+## 并行开发
+
+自 2.4.0 起,工作流状态按 **change 独立**,不再是单一共享槽位 -- 改动互不相交文件的变更可多会话并行:
+
+1. **per-change 状态** -- 每个 change 拥有自己的 `openspec/changes/<name>/loop-state.yaml`(phase、任务计数、`artifacts_hash`)。`guard.sh` / `ensure-contract-fresh.sh` 优先读它,回退到全局 `openspec/loop-state.yaml`(legacy)。跨会话覆盖不复存在;全局文件仅作兜底/看板。
+2. **文件所有权** -- 在 `openspec/changes/<name>/files.yaml` 中声明该变更将触碰的路径(一行一个;可选但强烈建议)。缺省时冲突检查会从 `tasks.md` / `execution-contract.md` 启发式提取路径 token(有噪声 -- 声明越显式,结果越可靠)。
+3. **冲突门禁** -- apply 前跑 `bash openspec/check-conflicts.sh`(或 `scaffold.sh conflicts .`)。无重叠 -> 可并行;有重叠 -> 这几个变更串行,或各自用 git worktree。`guard.sh` 的 `proposing->applying` 门禁检测到重叠时也会打印非阻塞警告。
+4. **并行 apply、串行 archive** -- 实施可并发;只有归档(delta spec 合并入 `openspec/specs/`)保持串行。
+
+新 change 从 `openspec/changes/_template/loop-state.yaml` 获取状态模板。2.4.0 之前的存量 change 在下次 `bash openspec/ensure-contract-fresh.sh --update <change-dir>` 时自动迁移(自动创建并 seed per-change 文件)。
+
+**升级存量项目(2.4.0 之前):** 脚手架是非破坏性的,不会覆盖已生成脚本,需手动刷新变更过的文件:
+
+```bash
+# 在项目旁生成一份全新骨架,然后同步升级过的脚本
+./skills/loopforge-codex/scaffold.sh fresh --dir /tmp/lf-fresh --no-init
+cp /tmp/lf-fresh/openspec/guard.sh /tmp/lf-fresh/openspec/ensure-contract-fresh.sh <project>/openspec/
+cp /tmp/lf-fresh/openspec/check-conflicts.sh <project>/openspec/
+cp /tmp/lf-fresh/openspec/changes/_template/loop-state.yaml <project>/openspec/changes/_template/
+```
 
 ## 审计现有项目
 

@@ -40,6 +40,7 @@ Both editions scaffold, audit, and restructure a project's AI-collaboration stru
 - **Cross-stack coordination** (LoopForge coordination docs + workset + OpenSpec `--goal` tags) so a one-person team can orchestrate frontend + backend changes across separate repos
 - **SDD (Subagent-Driven Development)** to dispatch implementer/reviewer subagents per task, preventing context bloat when juggling multiple projects
 - **Compile-gated verification** via `openspec/verify.config.yaml` -- the local `/opsx:verify` L1 build check confirms each stack compiles before push. The three-layer verify produces a `verify.md` credential that gates archival
+- **Parallel per-change workflow** (2.4.0) -- per-change `loop-state.yaml` + optional `files.yaml` ownership declaration + `check-conflicts.sh` gate, so changes in disjoint modules run in parallel sessions; only archiving stays serial
 
 ## Positioning
 
@@ -139,6 +140,7 @@ myapp/
 │   ├── ensure-contract-fresh.sh ← Execution-contract freshness check
 │   ├── check-conflicts.sh    ← File-ownership overlap check between active changes
 │   ├── loop-state.yaml       ← Legacy shared state machine; per-change state lives in changes/<name>/loop-state.yaml
+│   │                           changes/<name>/ optional files.yaml declares file ownership
 │   └── verify.config.yaml    ← Per-stack build/test commands (local /opsx:verify L1/L3)
 ├── .claude/  (CC edition)    ← HOW: settings.json (perms+hooks), rules/, agents/{reviewer,coordinator,implementer}
 ├── .agents/  (Codex edition) ← HOW: skills/openspec-* (propose/apply/verify/archive + triggers; legacy: .codex/)
@@ -157,6 +159,27 @@ myapp/
 **Codex:** nothing extra - the Superpowers 5-step discipline is already encoded as instructions in each generated `AGENTS.md`, and the loop is driven by the `openspec` CLI.
 
 Then fill `[BRACKETS]` placeholders in `openspec/README.md` (`## Project Overview`), `openspec/specs/*`, and per-stack `CLAUDE.md` / `AGENTS.md`.
+
+## Parallel development
+
+Since 2.4.0 the workflow state is **per change**, not one shared slot - changes touching disjoint files run in parallel sessions:
+
+1. **Per-change state** - each change owns `openspec/changes/<name>/loop-state.yaml` (phase, task counters, `artifacts_hash`). `guard.sh` and `ensure-contract-fresh.sh` read it first and fall back to the global `openspec/loop-state.yaml` (legacy). Cross-session overwrites are gone; the global file remains as fallback/dashboard only.
+2. **File ownership** - declare the paths a change will touch in `openspec/changes/<name>/files.yaml` (one path per line; optional but recommended). Without it, the conflict check falls back to extracting path tokens from `tasks.md` / `execution-contract.md` (heuristic - keep declarations explicit for reliable results).
+3. **Conflict gate** - run `bash openspec/check-conflicts.sh` (or `scaffold.sh conflicts .`) before apply. No overlap -> parallel-safe. Overlap -> serialize those changes or use separate git worktrees. The `guard.sh` `proposing->applying` gate also prints a non-blocking warning on overlap.
+4. **Parallel apply, serial archive** - implementations run concurrently; only archiving (delta-spec merge into `openspec/specs/`) stays serialized.
+
+New changes get the state template from `openspec/changes/_template/loop-state.yaml`. Pre-2.4.0 changes migrate automatically on the next `bash openspec/ensure-contract-fresh.sh --update <change-dir>` (it creates and seeds the per-change file).
+
+**Upgrading an existing project (pre-2.4.0):** scaffold is non-destructive and will NOT overwrite already-generated scripts, so refresh the changed ones manually:
+
+```bash
+# generate a fresh skeleton beside the project, then sync the upgraded scripts
+./skills/loopforge-codex/scaffold.sh fresh --dir /tmp/lf-fresh --no-init
+cp /tmp/lf-fresh/openspec/guard.sh /tmp/lf-fresh/openspec/ensure-contract-fresh.sh <project>/openspec/
+cp /tmp/lf-fresh/openspec/check-conflicts.sh <project>/openspec/
+cp /tmp/lf-fresh/openspec/changes/_template/loop-state.yaml <project>/openspec/changes/_template/
+```
 
 ## Audit an existing project
 
