@@ -31,7 +31,7 @@ CJK_THRESHOLD="${CJK_THRESHOLD:-10}"
 # Override per-run: TOKEN_THRESHOLD=2000 ./scaffold.sh check ./myapp
 TOKEN_THRESHOLD="${TOKEN_THRESHOLD:-3000}"
 # LoopForge version - written into generated projects for traceability.
-LOOPFORGE_VERSION="${LOOPFORGE_VERSION:-2.3.0}"
+LOOPFORGE_VERSION="${LOOPFORGE_VERSION:-2.4.0}"
 
 usage() {
   cat <<'USG'
