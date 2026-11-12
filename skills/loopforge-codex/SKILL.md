@@ -458,7 +458,7 @@ design:   (UI/page work, new pages only - before apply; existing-page edits skip
           Screenshot policy: NO automatic screenshots or image comparison. Take screenshots only after explicit user request and only if the active model supports images; otherwise provide a preview path/human checklist.
 apply:    implement tasks.md via TDD (red→green→refactor); per-task build check
 verify:   L1 build + L2 `openspec validate <name>` + L3 tests  →  write verify.md
-archive:  check verify.md (overall: PASS)  →  `openspec archive <name>` (moves into `changes/archive/`)
+archive:  check verify.md (overall: PASS)  →  `openspec archive <name>` (moves into `changes/archive/`)  →  auto-commit `git add -A && git commit -m "archive: <name>"` (no confirmation needed)
 ```
 
 > **After `openspec update`:** OpenSpec rewrites its generated skill files, wiping the LoopForge trigger injections. Re-run `scaffold.sh` in the project - it re-injects idempotently (existing files are skipped, markers are deduped).

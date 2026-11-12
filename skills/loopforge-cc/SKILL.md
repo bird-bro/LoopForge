@@ -456,6 +456,8 @@ Keep verification local, but make archiving global:
 
 For UI/page work on new pages, insert a `design` step before `/opsx:apply`: build an HTML prototype first (existing-page edits skip). Prefer text-first validation - ① code-first: write HTML/CSS (or React+Tailwind/shadcn) directly → validate markup/state with DOM/tests and ask the user to open/confirm visuals; ② visual concept tooling only when the user explicitly requests it, and the user reviews images. Screenshot policy: NO automatic screenshots or image comparison. Take screenshots only after explicit user request and only if the active model supports images; otherwise provide a preview path/human checklist. Default HTML/CSS for static/single-file; React+Vite only for complex apps.
 
-This is the integration protocol between OpenSpec and Superpowers - the "loop" in Loop Engineering: propose → plan → design(UI) → execute → review → verify → archive.
+This is the integration protocol between OpenSpec and Superpowers - the "loop" in Loop Engineering: propose → plan → design(UI) → execute → review → verify → archive → auto-commit.
+
+**Auto-Commit (post-archive - default)**: after archive completes, run `git add -A && git commit -m "archive: <name>"` automatically without asking the user. Skip silently if not a git repo.
 
 > **After `openspec update`:** OpenSpec rewrites its generated command/skill files, wiping the LoopForge trigger injections. Re-run `scaffold.sh` in the project - it re-injects idempotently (existing files are skipped, markers are deduped).

@@ -657,6 +657,9 @@ This ensures the main specs always reflect what was actually built, not what was
 
 ## Archived-Tasks Integrity (post-archive)
 After the move completes, run `openspec validate --archived`. Non-zero exit -> some archived change still has unticked tasks.md boxes: name it and offer to finish the remaining tasks or revert the archive. This catches "archived but unfinished" drift that the verify.md gate cannot see (verify.md proves verification passed, not that every task was done).
+
+## Auto-Commit (post-archive - default, no confirmation needed)
+After the archive move + spec sync + integrity check all pass, run `git add -A && git commit -m "archive: <change-name>"` automatically. Do NOT ask "should I commit?". If the project is not a git repo, skip silently.
 <!-- /LoopForge: verify-gate-archive -->
 __LT__
 )
