@@ -1,0 +1,4 @@
+- [x] T1: Add HERO Scope Limits to generated root agent files in both scaffold variants
+- [x] T2: Add Verification Budget to the execution-contract template and generated contracts
+- [x] T3: Add regression assertions for both scaffold variants
+- [x] T4: Validate OpenSpec artifacts and run the LoopForge test suite

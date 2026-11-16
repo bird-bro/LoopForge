@@ -1095,6 +1095,11 @@ __LF_VAPY__
 - **Required edge cases**: 
 - **Regression-sensitive areas**: 
 
+## Verification Budget
+
+- **Required verification**: checks tied to Approved Behavior, Test Obligations, or user/project-mandated gates
+- **Optional checks**: run only when the concrete failure and next action are identified
+
 ## Execution Mode
 
 - **Mode**: `Inline` | `Batch Inline` | `SDD`
@@ -1354,6 +1359,11 @@ fi
   echo "- **Behaviors requiring failing-test-first**: "
   echo "- **Required edge cases**: "
   echo "- **Regression-sensitive areas**: "
+  echo ""
+  echo "## Verification Budget"
+  echo ""
+  echo "- **Required verification**: checks tied to Approved Behavior, Test Obligations, or user/project-mandated gates"
+  echo "- **Optional checks**: run only when the concrete failure and next action are identified"
   echo ""
   echo "## Execution Mode"
   echo ""
@@ -2293,6 +2303,13 @@ __COORD_TPL__
     echo "- During apply, run affected tests; run the configured suite during verify."
     echo "- Ask clarifications in one batch (max 3); do not ask serial one-off questions."
     echo "- On resume, read loop-state/progress/tasks first; do not re-read archives or unrelated changes."
+    echo ""
+    echo "### HERO Scope Limits"
+    echo "- Report real problems, including rare cases reachable through supported use; propose fixes only for that scope."
+    echo "- Verification is welcome; over-defense is not. Do not add hashes, checksums, or compatibility wrappers unless they replace materially more expensive work and change the next action."
+    echo "- Where judgment is needed, judge; do not replace settled decisions with scorecards, checklists, or repeated audits."
+    echo "- Required security, migration, verification, review, TDD, and user/project/higher-priority gates override HERO."
+    echo "- Before an optional check, state the concrete failure it detects and what changes next; no answer means do not run it."
     echo ""
     echo "### Session Commands"
     echo "\`/resume\` · \`/branch\` · \`/rewind\`"

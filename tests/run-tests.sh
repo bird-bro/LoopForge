@@ -75,6 +75,25 @@ for script in guard.sh build-contract.sh ensure-contract-fresh.sh check-conflict
 done
 
 # ================================================================
+# 2b. HERO ANTI-OVERDEFENSE INTEGRATION
+# ================================================================
+
+test_group "2b. HERO anti-overdefense integration"
+
+for host in CC CX; do
+  proj_var="${host}_PROJ"
+  proj="${!proj_var}"
+  for agent_file in AGENTS.md CLAUDE.md; do
+    _CURRENT_TEST="$host root $agent_file has HERO scope limits"
+    assert_file_exists "$proj/$agent_file" "$_CURRENT_TEST"
+    agent_content=$(cat "$proj/$agent_file")
+    assert_contains "$agent_content" "### HERO Scope Limits" "$_CURRENT_TEST"
+    assert_contains "$agent_content" "reachable through supported use" "$_CURRENT_TEST"
+    assert_contains "$agent_content" "override HERO" "$_CURRENT_TEST"
+  done
+done
+
+# ================================================================
 # 3. VERSION SUBCOMMAND
 # ================================================================
 test_group "3. version subcommand"
@@ -202,6 +221,22 @@ _CURRENT_TEST="CC contract refuses without --force"
 out=$(bash "$CC_PROJ/openspec/build-contract.sh" "$CC_PROJ/openspec/changes/test-change" 2>&1); rc=$?
 assert_contains "$out" "already exists" "$_CURRENT_TEST"
 assert_exit_code 1 $rc "CC contract refuse exit code"
+
+# ================================================================
+# 7b. HERO CONTRACT VERIFICATION BUDGET
+# ================================================================
+
+test_group "7b. HERO contract verification budget"
+
+for host in CC CX; do
+  proj_var="${host}_PROJ"
+  proj="${!proj_var}"
+  _CURRENT_TEST="$host generated contract has verification budget"
+  contract_content=$(cat "$proj/openspec/changes/test-change/execution-contract.md")
+  assert_contains "$contract_content" "## Verification Budget" "$_CURRENT_TEST"
+  assert_contains "$contract_content" "Required verification" "$_CURRENT_TEST"
+  assert_contains "$contract_content" "Optional checks" "$_CURRENT_TEST"
+done
 
 # ================================================================
 # 8. ENSURE-CONTRACT-FRESH
